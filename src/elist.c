@@ -2,10 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-void e_list_push(eListNode **head, void *data, size_t size)
+void e_list_push(eArena *arena, eListNode **head, void *data, size_t size)
 {
-    eListNode *node = malloc(sizeof(eListNode));
-    node->data = malloc(size);
+    eListNode *node = e_arena_alloc(arena, sizeof(eListNode));
+    node->data = e_arena_alloc(arena, size);
     memcpy(node->data, data, size);
     node->next = NULL;
 
@@ -25,6 +25,7 @@ void e_list_push(eListNode **head, void *data, size_t size)
     current->next = node;
 }
 
+/*
 void e_list_free(eListNode **head)
 {
     eListNode *current = *head;
@@ -40,6 +41,7 @@ void e_list_free(eListNode **head)
 
     *head = NULL;
 }
+*/
 
 void *e_list_at(eListNode *head, size_t index)
 {

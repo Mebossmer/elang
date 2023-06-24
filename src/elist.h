@@ -1,5 +1,6 @@
 #pragma once
 
+#include "earena.h"
 #include <stddef.h>
 #include <stdbool.h>
 
@@ -14,9 +15,9 @@ struct elistnode
     eListNode *next;
 };
 
-void e_list_push(eListNode **head, void *data, size_t size);
+void e_list_push(eArena *arena, eListNode **head, void *data, size_t size);
 
-void e_list_free(eListNode **head);
+// void e_list_free(eListNode **head);
 
 void *e_list_at(eListNode *head, size_t index);
 

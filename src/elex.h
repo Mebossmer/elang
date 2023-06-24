@@ -1,6 +1,7 @@
 #pragma once
 
 #include "elist.h"
+#include "estring.h"
 #include <stdint.h>
 #include <stddef.h>
 
@@ -35,4 +36,4 @@ typedef struct
     size_t line, start, len;
 } eToken;
 
-eListNode *e_lex(const char *src);
+eListNode *e_lex(eArena *arena, eString src);

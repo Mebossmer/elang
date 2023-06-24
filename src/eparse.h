@@ -108,21 +108,21 @@ typedef struct
 
     size_t index;
 
-    char *src;
+    eString src;
 } eParser;
 
-eASTNode *e_ast_alloc(eASTNode node);
+eASTNode *e_ast_alloc(eArena *arena, eASTNode node);
 
-void e_ast_free(eASTNode *node);
+// void e_ast_free(eASTNode *node);
 
-eParser e_parser_new(eListNode *tokens, char *src);
+eParser e_parser_new(eArena *arena, eListNode *tokens, eString src);
 
-void e_parser_free(eParser *self);
+// void e_parser_free(eParser *self);
 
-eASTNode *e_parse_factor(eParser *self);
+eASTNode *e_parse_factor(eArena *arena, eParser *self);
 
-eASTNode *e_parse_terminal(eParser *self);
+eASTNode *e_parse_terminal(eArena *arena, eParser *self);
 
-eASTNode *e_parse_expression(eParser *self);
+eASTNode *e_parse_expression(eArena *arena, eParser *self);
 
-eASTNode *e_parse_statement(eParser *self);
+eASTNode *e_parse_statement(eArena *arena, eParser *self);

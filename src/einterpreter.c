@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef eValue(* BuiltinFunction)(eScope *scope, eListNode *arguments);
+typedef eValue(* BuiltinFunction)(eArena *arena, eScope *scope, eListNode *arguments);
 
 typedef struct
 {
@@ -20,7 +20,7 @@ static FunctionMap builtin_functions[] = {
     {.identifier = "exit", .func = __e_exit, .num_arguments = 1}
 };
 
-eValue e_evaluate(eASTNode *node, eScope *scope)
+eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
 {
     switch(node->tag)
     {
@@ -33,7 +33,7 @@ eValue e_evaluate(eASTNode *node, eScope *scope)
 
     case AST_STRING_LITERAL: {
         size_t len = strlen(node->string_literal.value);
-        char *tmp = malloc(len + 1);
+        char *tmp = e_arena_alloc(arena, len + 1);
         memcpy(tmp, node->string_literal.value, len);
         tmp[len] = '\0';
 
@@ -56,8 +56,8 @@ eValue e_evaluate(eASTNode *node, eScope *scope)
     }
 
     case AST_ARITHMETIC: {
-        eValue lhs = e_evaluate(node->arithmetic.lhs, scope);
-        eValue rhs = e_evaluate(node->arithmetic.rhs, scope);
+        eValue lhs = e_evaluate(arena, node->arithmetic.lhs, scope);
+        eValue rhs = e_evaluate(arena, node->arithmetic.rhs, scope);
 
         switch(node->arithmetic.op)
         {
@@ -97,19 +97,19 @@ eValue e_evaluate(eASTNode *node, eScope *scope)
     }
 
     case AST_DECLARATION: {
-        e_declare(node->declaration, scope);
+        e_declare(arena, node->declaration, scope);
 
         return (eValue) {.type = VT_INVALID};
     }
 
     case AST_ASSIGNMENT: {
-        e_assign(node->assignment, scope);
+        e_assign(arena, node->assignment, scope);
 
         return (eValue) {.type = VT_INVALID};
     }
 
     case AST_FUNCTION_CALL: {
-        return e_call(node->function_call, scope);
+        return e_call(arena, node->function_call, scope);
     }
 
     default: {
@@ -118,7 +118,7 @@ eValue e_evaluate(eASTNode *node, eScope *scope)
     }
 }
 
-eValue e_call(eASTFunctionCall call, eScope *scope)
+eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 {
     for(size_t i = 0; i < sizeof(builtin_functions) / sizeof(FunctionMap); i++)
     {
@@ -131,14 +131,14 @@ eValue e_call(eASTFunctionCall call, eScope *scope)
                 exit(1);
             }
 
-            return builtin_functions[i].func(scope, call.arguments);
+            return builtin_functions[i].func(arena, scope, call.arguments);
         }
     }
 
     return (eValue) {.type = VT_INVALID};
 }
 
-void e_declare(eASTDeclaration declaration, eScope *scope)
+void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
 {
     eListNode *current = scope->variables;
     while(current != NULL)
@@ -156,18 +156,18 @@ void e_declare(eASTDeclaration declaration, eScope *scope)
 
     size_t len = strlen(declaration.identifier);
 
-    char *tmp = malloc(len + 1);
+    char *tmp = e_arena_alloc(arena, len + 1);
     memcpy(tmp, declaration.identifier, len);
     tmp[len] = '\0';
 
-    e_list_push(&scope->variables, &(eVariable) {
+    e_list_push(arena, &scope->variables, &(eVariable) {
         .identifier = tmp,
-        .value = e_evaluate(declaration.init, scope),
+        .value = e_evaluate(arena, declaration.init, scope),
         .type = declaration.type
     }, sizeof(eVariable));
 }
 
-void e_assign(eASTAssignment assignment, eScope *scope)
+void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
 {
     eListNode *current_var = scope->variables;
     while(current_var != NULL)
@@ -182,7 +182,7 @@ void e_assign(eASTAssignment assignment, eScope *scope)
                 exit(1);
             }
 
-            var->value = e_evaluate(assignment.init, scope);
+            var->value = e_evaluate(arena, assignment.init, scope);
 
             return;
         }
@@ -208,6 +208,7 @@ eValue e_get_value(const char *identifier, eScope *scope)
     return (eValue) {.type = VT_INVALID};
 }
 
+/*
 void e_free_scope(eScope *self)
 {
     eListNode *current = self->variables;
@@ -220,8 +221,11 @@ void e_free_scope(eScope *self)
 
     e_list_free(&self->variables);
 }
+*/
 
+/*
 void e_free_variable(eVariable *self)
 {
     free(self->identifier);
 }
+*/

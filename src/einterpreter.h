@@ -38,16 +38,16 @@ typedef struct
     eListNode *variables;
 } eScope;
 
-eValue e_evaluate(eASTNode *node, eScope *scope);
+eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope);
 
-eValue e_call(eASTFunctionCall call, eScope *scope);
+eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope);
 
-void e_declare(eASTDeclaration declaration, eScope *scope);
+void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);
 
-void e_assign(eASTAssignment assignment, eScope *scope);
+void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope);
 
 eValue e_get_value(const char *identifier, eScope *scope);
 
-void e_free_scope(eScope *self);
+// void e_free_scope(eScope *self);
 
-void e_free_variable(eVariable *self);
+// void e_free_variable(eVariable *self);

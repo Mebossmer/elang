@@ -15,22 +15,22 @@
 
 typedef struct
 {
-    const char *text;
+    eString text;
     eTokenTag tag;
 } KeywordMap;
 
 static KeywordMap keywords[] = {
-    {.text = "var", .tag = ETK_KEYWORD_VAR},
-    {.text = "const", .tag = ETK_KEYWORD_CONST}
+    {.text = {.ptr = "var", .len = 3}, .tag = ETK_KEYWORD_VAR},
+    {.text = {.ptr = "const", .len = 5}, .tag = ETK_KEYWORD_CONST}
 };
 
-static eToken lex_identifier(const char *src, size_t start, size_t line)
+static eToken lex_identifier(eString src, size_t start, size_t line)
 {
     eToken tk = {0};
 
-    for(size_t i = start; i < strlen(src); i++)
+    for(size_t i = start; i < src.len; i++)
     {
-        char c = src[i];
+        char c = src.ptr[i];
 
         if(!isalpha(c))
         {
@@ -41,7 +41,8 @@ static eToken lex_identifier(const char *src, size_t start, size_t line)
 
             for(size_t j = 0; j < ARR_LEN(keywords); j++)
             {
-                if(strncmp(keywords[j].text, src + tk.start, strlen(keywords[j].text)) == 0)
+                // if(strncmp(keywords[j].text, src + tk.start, strlen(keywords[j].text)) == 0)
+                if(e_string_compare(keywords[j].text, e_string_slice(src, tk.start, keywords[j].text.len)))
                 {
                     tk.tag = keywords[j].tag;
 
@@ -56,13 +57,13 @@ static eToken lex_identifier(const char *src, size_t start, size_t line)
     return tk;
 }
 
-static eToken lex_number(const char *src, size_t start, size_t line)
+static eToken lex_number(eString src, size_t start, size_t line)
 {
     eToken tk = {0};
 
-    for(size_t i = start; i < strlen(src); i++)
+    for(size_t i = start; i < src.len; i++)
     {
-        char c = src[i];
+        char c = src.ptr[i];
 
         if(!isdigit(c))
         {
@@ -78,13 +79,13 @@ static eToken lex_number(const char *src, size_t start, size_t line)
     return tk;
 }
 
-static eToken lex_string(const char *src, size_t start, size_t line)
+static eToken lex_string(eString src, size_t start, size_t line)
 {
     eToken tk = {0};
 
-    for(size_t i = start + 1; i < strlen(src); i++)
+    for(size_t i = start + 1; i < src.len; i++)
     {
-        char c = src[i];
+        char c = src.ptr[i];
 
         if(c == '"')
         {
@@ -100,19 +101,18 @@ static eToken lex_string(const char *src, size_t start, size_t line)
     return tk;
 }
 
-eListNode *e_lex(const char *src)
+eListNode *e_lex(eArena *arena, eString src)
 {
     eListNode *tokens = NULL;
 
-    size_t len = strlen(src);
     size_t line = 1;
 
     size_t i = 0;
-    while(i < len)
+    while(i < src.len)
     {
         eToken tk = {0};
 
-        char c = src[i];
+        char c = src.ptr[i];
 
         if(c == '\t' || c == ' ')
         {
@@ -195,7 +195,7 @@ eListNode *e_lex(const char *src)
         }
 
         i += tk.len;
-        e_list_push(&tokens, &tk, sizeof(eToken));
+        e_list_push(arena, &tokens, &tk, sizeof(eToken));
     }
 
     return tokens;

@@ -1,3 +1,4 @@
+#include "earena.h"
 #include "eparse.h"
 #include "eerror.h"
 #include <stdio.h>
@@ -5,14 +6,15 @@
 #include <stdbool.h>
 #include <string.h>
 
-eASTNode *e_ast_alloc(eASTNode node)
+eASTNode *e_ast_alloc(eArena *arena, eASTNode node)
 {
-    eASTNode *new = malloc(sizeof(eASTNode));
+    eASTNode *new = e_arena_alloc(arena, sizeof(eASTNode));
     *new = node;
 
     return new;
 }
 
+/*
 void e_ast_free(eASTNode *node)
 {
     switch(node->tag)
@@ -58,23 +60,30 @@ void e_ast_free(eASTNode *node)
 
     free(node);
 }
+*/
 
-eParser e_parser_new(eListNode *tokens, char *src)
+eParser e_parser_new(eArena *arena, eListNode *tokens, eString src)
 {
-    char *tmp = malloc(strlen(src) + 1);
-    strcpy(tmp, src);
+    /*
+    size_t len = strlen(src);
+    char *tmp = e_arena_alloc(arena, len + 1);
+    memcpy(tmp, src, len);
+    tmp[len] = '\0';
+    */
 
     return (eParser) {
         .tokens = tokens,
         .index = 0,
-        .src = tmp
+        .src = src
     };
 }
 
+/*
 void e_parser_free(eParser *self)
 {
     free(self->src);
 }
+*/
 
 static eOperation get_operation(eTokenTag tag)
 {
@@ -139,26 +148,26 @@ static bool expect(eParser *self, eTokenTag tag)
     return false;
 }
 
-eASTNode *e_parse_factor(eParser *self)
+eASTNode *e_parse_factor(eArena *arena, eParser *self)
 {
     eToken *tk = E_LIST_AT(self->tokens, self->index, eToken *);
 
     if(accept(self, ETK_NUMBER))
     {
-        return e_ast_alloc((eASTNode) {
+        return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_NUMERIC_LITERAL,
             .numeric_literal = (eASTNumericLiteral) {
-                .value = to_long(self->src + tk->start, tk->len)
+                .value = to_long(self->src.ptr + tk->start, tk->len)
             }
         });
     }
     else if(accept(self, ETK_STRING))
     {
-        char *tmp = malloc(tk->len - 1);
-        memcpy(tmp, self->src + tk->start + 1, tk->len - 2);
+        char *tmp = e_arena_alloc(arena, tk->len - 1);
+        memcpy(tmp, self->src.ptr + tk->start + 1, tk->len - 2);
         tmp[tk->len - 2] = '\0';
 
-        return e_ast_alloc((eASTNode) {
+        return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_STRING_LITERAL,
             .string_literal = (eASTStringLiteral) {
                 .value = tmp
@@ -167,18 +176,18 @@ eASTNode *e_parse_factor(eParser *self)
     }
     else if(accept(self, ETK_IDENTIFIER))
     {
-        char *tmp = malloc(tk->len + 1);
-        memcpy(tmp, self->src + tk->start, tk->len);
+        char *tmp = e_arena_alloc(arena, tk->len + 1);
+        memcpy(tmp, self->src.ptr + tk->start, tk->len);
         tmp[tk->len] = '\0';
 
-        return e_ast_alloc((eASTNode) {
+        return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_IDENTIFIER,
             .identifier = tmp
         });
     }
     else if(accept(self, ETK_L_PAREN))
     {
-        eASTNode *node = e_parse_expression(self);
+        eASTNode *node = e_parse_expression(arena, self);
 
         if(!expect(self, ETK_R_PAREN))
         {
@@ -194,9 +203,9 @@ eASTNode *e_parse_factor(eParser *self)
     return NULL;
 }
 
-eASTNode *e_parse_terminal(eParser *self)
+eASTNode *e_parse_terminal(eArena *arena, eParser *self)
 {
-    eASTNode *lhs = e_parse_factor(self);
+    eASTNode *lhs = e_parse_factor(arena, self);
     if(self->index >= e_list_len(self->tokens))
     {
         return lhs;
@@ -210,9 +219,9 @@ eASTNode *e_parse_terminal(eParser *self)
 
         self->index++;
 
-        eASTNode *rhs = e_parse_factor(self);
+        eASTNode *rhs = e_parse_factor(arena, self);
 
-        lhs = e_ast_alloc((eASTNode) {
+        lhs = e_ast_alloc(arena, (eASTNode) {
             .tag = AST_ARITHMETIC,
             .arithmetic = (eASTArithmetic) {
                 .lhs = lhs,
@@ -230,9 +239,9 @@ eASTNode *e_parse_terminal(eParser *self)
     return lhs;
 }
 
-eASTNode *e_parse_expression(eParser *self)
+eASTNode *e_parse_expression(eArena *arena, eParser *self)
 {
-    eASTNode *lhs = e_parse_terminal(self);
+    eASTNode *lhs = e_parse_terminal(arena, self);
     if(self->index >= e_list_len(self->tokens))
     {
         return lhs;
@@ -245,9 +254,9 @@ eASTNode *e_parse_expression(eParser *self)
 
         self->index++;
 
-        eASTNode *rhs = e_parse_terminal(self);
+        eASTNode *rhs = e_parse_terminal(arena, self);
 
-        lhs = e_ast_alloc((eASTNode) {
+        lhs = e_ast_alloc(arena, (eASTNode) {
             .tag = AST_ARITHMETIC,
             .arithmetic = (eASTArithmetic) {
                 .lhs = lhs,
@@ -280,11 +289,11 @@ static eAssignmentType get_assignment_type(eTokenTag tag)
     }
 }
 
-eASTNode *e_parse_statement(eParser *self)
+eASTNode *e_parse_statement(eArena *arena, eParser *self)
 {
     if(self->index >= e_list_len(self->tokens))
     {
-        return e_ast_alloc((eASTNode) {
+        return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_EOF
         });
     }
@@ -305,15 +314,15 @@ eASTNode *e_parse_statement(eParser *self)
             return NULL;
         }
 
-        char *id = malloc(identifier->len + 1);
-        memcpy(id, self->src + identifier->start, identifier->len);
+        char *id = e_arena_alloc(arena, identifier->len + 1);
+        memcpy(id, self->src.ptr + identifier->start, identifier->len);
         id[identifier->len] = '\0';
 
-        return e_ast_alloc((eASTNode) {
+        return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_DECLARATION,
             .declaration = (eASTDeclaration) {
                 .type = get_assignment_type(tk->tag),
-                .init = e_parse_expression(self),
+                .init = e_parse_expression(arena, self),
                 .identifier = id
             }
         });
@@ -323,16 +332,16 @@ eASTNode *e_parse_statement(eParser *self)
         // Variable assignment
         if(accept(self, ETK_L_PAREN))
         {
-            char *id = malloc(tk->len + 1);
-            memcpy(id, self->src + tk->start, tk->len);
+            char *id = e_arena_alloc(arena, tk->len + 1);
+            memcpy(id, self->src.ptr + tk->start, tk->len);
             id[tk->len] = '\0';
 
             eListNode *arguments = NULL;
             do
             {
-                eASTNode *node = e_parse_expression(self);
+                eASTNode *node = e_parse_expression(arena, self);
 
-                e_list_push(&arguments, node, sizeof(eASTNode));
+                e_list_push(arena, &arguments, node, sizeof(eASTNode));
             } while(accept(self, ETK_COMMA));
 
             if(!expect(self, ETK_R_PAREN))
@@ -340,7 +349,7 @@ eASTNode *e_parse_statement(eParser *self)
                 return NULL;
             }
 
-            return e_ast_alloc((eASTNode) {
+            return e_ast_alloc(arena, (eASTNode) {
                 .tag = AST_FUNCTION_CALL,
                 .function_call = (eASTFunctionCall) {
                     .identifier = id,
@@ -350,14 +359,14 @@ eASTNode *e_parse_statement(eParser *self)
         }
         else if(accept(self, ETK_EQUALS))
         {
-            char *id = malloc(tk->len + 1);
-            memcpy(id, self->src + tk->start, tk->len);
+            char *id = e_arena_alloc(arena, tk->len + 1);
+            memcpy(id, self->src.ptr + tk->start, tk->len);
             id[tk->len] = '\0';
 
-            return e_ast_alloc((eASTNode) {
+            return e_ast_alloc(arena, (eASTNode) {
                 .tag = AST_ASSIGNMENT,
                 .assignment = (eASTAssignment) {
-                    .init = e_parse_expression(self),
+                    .init = e_parse_expression(arena, self),
                     .identifier = id
                 }
             });

@@ -5,14 +5,14 @@
 #include "einterpreter.h"
 #include "eerror.h"
 
-char *read_file(const char *path)
+eString read_file(eArena *arena, const char *path)
 {
     FILE *fp = fopen(path, "rb");
     if(!fp)
     {
         fprintf(stderr, "Failed to open file: %s\n", path);
 
-        return NULL;
+        return (eString) {.ptr = NULL, .len = 0};
     }
 
     fseek(fp, 0, SEEK_END);
@@ -20,19 +20,17 @@ char *read_file(const char *path)
 
     fseek(fp, 0, SEEK_SET);
 
-    char *txt = malloc(len);
-    if(!txt)
+    eString txt = e_string_alloc(arena, len);
+    if(!txt.ptr)
     {
         fprintf(stderr, "Failed to read file: %s\n", path);
 
-        return NULL;
+        return (eString) {.ptr = NULL, .len = 0};
     }
 
-    fread(txt, 1, len, fp);
+    fread(txt.ptr, 1, len, fp);
 
     fclose(fp);
-
-    txt[len] = '\0';
 
     return txt;
 }
@@ -47,8 +45,10 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    char *txt = read_file(argv[1]);
-    if(!txt)
+    eArena arena = e_arena_new(16384);
+
+    eString txt = read_file(&arena, argv[1]);
+    if(!txt.ptr)
     {
         return -1;
     }
@@ -57,7 +57,7 @@ int main(int argc, char **argv)
         .variables = NULL
     };
 
-    eListNode *tokens = e_lex(txt);
+    eListNode *tokens = e_lex(&arena, txt);
     eListNode *current = tokens;
     while(current != NULL)
     {
@@ -72,9 +72,9 @@ int main(int argc, char **argv)
         current = current->next;
     }
 
-    eParser parser = e_parser_new(tokens, txt);
+    eParser parser = e_parser_new(&arena, tokens, txt);
 
-    eASTNode *expr = e_parse_statement(&parser);
+    eASTNode *expr = e_parse_statement(&arena, &parser);
     if(expr == NULL)
     {
         fprintf(stderr, "Parser error in line %ld: %s\n", e_get_error_line(), e_get_error());
@@ -84,11 +84,9 @@ int main(int argc, char **argv)
 
     while(expr->tag != AST_EOF)
     {
-        e_evaluate(expr, &global);
+        e_evaluate(&arena, expr, &global);
 
-        e_ast_free(expr);
-
-        expr = e_parse_statement(&parser);
+        expr = e_parse_statement(&arena, &parser);
 
         if(expr == NULL)
         {
@@ -98,14 +96,7 @@ int main(int argc, char **argv)
         }
     }
 
-    e_ast_free(expr);
-
-    e_free_scope(&global);
-
-    e_parser_free(&parser);
-    e_list_free(&tokens);
-
-    free(txt);
+    e_arena_free(&arena);
 
     return 0;
 }

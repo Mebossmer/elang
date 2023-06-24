@@ -11,5 +11,6 @@ add_executable(elang
     "src/eerror.c"
     "src/ebuiltin.c"
     "src/earena.c"
+    "src/estring.c"
 )
 

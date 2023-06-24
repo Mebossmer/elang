@@ -5,6 +5,6 @@ const bar = foo * 2
 
 print(foo - 1)
 
-print(bar)
+print(bar * 45)
 
 print("Hello from e lang!")

@@ -16,4 +16,4 @@ void e_arena_free(eArena *arena);
 
 void *e_arena_alloc(eArena *arena, size_t size);
 
-void e_arena_resize(eArena *arena, size_t size);
+// void e_arena_resize(eArena *arena, size_t size);

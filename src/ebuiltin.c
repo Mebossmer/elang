@@ -2,9 +2,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-eValue __e_print(eScope *scope, eListNode *arguments)
+eValue __e_print(eArena *arena, eScope *scope, eListNode *arguments)
 {
-    eValue value = e_evaluate(E_LIST_AT(arguments, 0, eASTNode *), scope);
+    eValue value = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
 
     switch(value.type)
     {
@@ -22,9 +22,9 @@ eValue __e_print(eScope *scope, eListNode *arguments)
     return (eValue) {.type = VT_INVALID};
 }
 
-eValue __e_exit(eScope *scope, eListNode *arguments)
+eValue __e_exit(eArena *arena, eScope *scope, eListNode *arguments)
 {
-    eValue value = e_evaluate(E_LIST_AT(arguments, 0, eASTNode *), scope);
+    eValue value = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
 
     exit(value.integer);
 }
