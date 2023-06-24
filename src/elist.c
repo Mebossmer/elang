@@ -25,24 +25,6 @@ void e_list_push(eArena *arena, eListNode **head, void *data, size_t size)
     current->next = node;
 }
 
-/*
-void e_list_free(eListNode **head)
-{
-    eListNode *current = *head;
-    while(current->next != NULL)
-    {
-        eListNode *tmp = current->next;
-
-        free(current->data);
-        free(current);
-
-        current = tmp;
-    }
-
-    *head = NULL;
-}
-*/
-
 void *e_list_at(eListNode *head, size_t index)
 {
     size_t counter = 0;

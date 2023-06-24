@@ -45,7 +45,7 @@ int main(int argc, char **argv)
         return 0;
     }
 
-    eArena arena = e_arena_new(16384);
+    eArena arena = e_arena_new(2048);
 
     eString txt = read_file(&arena, argv[1]);
     if(!txt.ptr)

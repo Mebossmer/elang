@@ -14,76 +14,14 @@ eASTNode *e_ast_alloc(eArena *arena, eASTNode node)
     return new;
 }
 
-/*
-void e_ast_free(eASTNode *node)
-{
-    switch(node->tag)
-    {
-    case AST_ARITHMETIC:
-        e_ast_free(node->arithmetic.lhs);
-        e_ast_free(node->arithmetic.rhs);
-
-        break;
-
-    case AST_DECLARATION:
-        free(node->declaration.identifier);
-        e_ast_free(node->declaration.init);
-
-        break;
-
-    case AST_ASSIGNMENT:
-        free(node->assignment.identifier);
-        e_ast_free(node->assignment.init);
-
-        break;
-
-    case AST_FUNCTION_CALL:
-        free(node->function_call.identifier);
-        eListNode *current = node->function_call.arguments;
-        while(current != NULL)
-        {
-            e_ast_free(current->data);
-
-            current = current->next;
-        }
-
-        break;
-
-    case AST_STRING_LITERAL:
-        free(node->string_literal.value);
-
-        break;
-
-    default:
-        break;
-    }
-
-    free(node);
-}
-*/
-
 eParser e_parser_new(eArena *arena, eListNode *tokens, eString src)
 {
-    /*
-    size_t len = strlen(src);
-    char *tmp = e_arena_alloc(arena, len + 1);
-    memcpy(tmp, src, len);
-    tmp[len] = '\0';
-    */
-
     return (eParser) {
         .tokens = tokens,
         .index = 0,
         .src = src
     };
 }
-
-/*
-void e_parser_free(eParser *self)
-{
-    free(self->src);
-}
-*/
 
 static eOperation get_operation(eTokenTag tag)
 {
@@ -111,13 +49,15 @@ static eOperation get_operation(eTokenTag tag)
 
 static long to_long(const char *txt, size_t n)
 {
-    char *tmp = malloc(n + 1);
+    eArena arena = e_arena_new(n + 1);
+
+    char *tmp = e_arena_alloc(&arena, n + 1);
     memcpy(tmp, txt, n);
     tmp[n] = '\0';
 
     long num = strtol(tmp, NULL, 10);
 
-    free(tmp);
+    e_arena_free(&arena);
 
     return num;
 }
@@ -143,7 +83,6 @@ static bool expect(eParser *self, eTokenTag tag)
 
     e_errcode = ERR_UNEXPECTED_TOKEN;
     e_errline = E_LIST_AT(self->tokens, self->index, eToken *)->line;
-    // fprintf(stderr, "Unexpected token at index %ld\n", self->index);
 
     return false;
 }
@@ -163,12 +102,6 @@ eASTNode *e_parse_factor(eArena *arena, eParser *self)
     }
     else if(accept(self, ETK_STRING))
     {
-        /*
-        char *tmp = e_arena_alloc(arena, tk->len - 1);
-        memcpy(tmp, self->src.ptr + tk->start + 1, tk->len - 2);
-        tmp[tk->len - 2] = '\0';
-        */
-
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_STRING_LITERAL,
             .string_literal = (eASTStringLiteral) {
@@ -312,12 +245,6 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
             return NULL;
         }
 
-        /*
-        char *id = e_arena_alloc(arena, identifier->len + 1);
-        memcpy(id, self->src.ptr + identifier->start, identifier->len);
-        id[identifier->len] = '\0';
-        */
-
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_DECLARATION,
             .declaration = (eASTDeclaration) {
@@ -332,12 +259,6 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
         // Variable assignment
         if(accept(self, ETK_L_PAREN))
         {
-            /*
-            char *id = e_arena_alloc(arena, tk->len + 1);
-            memcpy(id, self->src.ptr + tk->start, tk->len);
-            id[tk->len] = '\0';
-            */
-
             eListNode *arguments = NULL;
             do
             {
@@ -361,12 +282,6 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
         }
         else if(accept(self, ETK_EQUALS))
         {
-            /*
-            char *id = e_arena_alloc(arena, tk->len + 1);
-            memcpy(id, self->src.ptr + tk->start, tk->len);
-            id[tk->len] = '\0';
-            */
-
             return e_ast_alloc(arena, (eASTNode) {
                 .tag = AST_ASSIGNMENT,
                 .assignment = (eASTAssignment) {

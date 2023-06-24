@@ -47,7 +47,3 @@ void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);
 void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope);
 
 eValue e_get_value(eString identifier, eScope *scope);
-
-// void e_free_scope(eScope *self);
-
-// void e_free_variable(eVariable *self);

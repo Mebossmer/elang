@@ -113,11 +113,7 @@ typedef struct
 
 eASTNode *e_ast_alloc(eArena *arena, eASTNode node);
 
-// void e_ast_free(eASTNode *node);
-
 eParser e_parser_new(eArena *arena, eListNode *tokens, eString src);
-
-// void e_parser_free(eParser *self);
 
 eASTNode *e_parse_factor(eArena *arena, eParser *self);
 

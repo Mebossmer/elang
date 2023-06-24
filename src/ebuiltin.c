@@ -24,7 +24,6 @@ eValue __e_print(eArena *arena, eScope *scope, eListNode *arguments)
         break;
 
     case VT_STRING:
-        // printf("%s\n", value.string.ptr);
         println(value.string);
 
         break;

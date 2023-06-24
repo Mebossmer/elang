@@ -41,7 +41,6 @@ static eToken lex_identifier(eString src, size_t start, size_t line)
 
             for(size_t j = 0; j < ARR_LEN(keywords); j++)
             {
-                // if(strncmp(keywords[j].text, src + tk.start, strlen(keywords[j].text)) == 0)
                 if(e_string_compare(keywords[j].text, e_string_slice(src, tk.start, keywords[j].text.len)))
                 {
                     tk.tag = keywords[j].tag;

@@ -32,11 +32,6 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_STRING_LITERAL: {
-        // size_t len = strlen(node->string_literal.value);
-        // char *tmp = e_arena_alloc(arena, len + 1);
-        // memcpy(tmp, node->string_literal.value, len);
-        // tmp[len] = '\0';
-
         return (eValue) {
             .type = VT_STRING,
             .string = node->string_literal.value
@@ -122,7 +117,6 @@ eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 {
     for(size_t i = 0; i < sizeof(builtin_functions) / sizeof(FunctionMap); i++)
     {
-        // if(strcmp(call.identifier, builtin_functions[i].identifier) == 0)
         if(e_string_compare(call.identifier, builtin_functions[i].identifier))
         {
             if(e_list_len(call.arguments) != builtin_functions[i].num_arguments)
@@ -145,7 +139,6 @@ void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
     while(current != NULL)
     {
         eVariable *var = (eVariable *) current->data;
-        // if(strcmp(var->identifier, declaration.identifier) == 0)
         if(e_string_compare(var->identifier, declaration.identifier))
         {
             fprintf(stderr, "A variable with that name already exists\n");
@@ -155,14 +148,6 @@ void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
     
         current = current->next;
     }
-
-    /*
-    size_t len = strlen(declaration.identifier);
-
-    char *tmp = e_arena_alloc(arena, len + 1);
-    memcpy(tmp, declaration.identifier, len);
-    tmp[len] = '\0';
-    */
 
     e_list_push(arena, &scope->variables, &(eVariable) {
         .identifier = declaration.identifier,
@@ -177,7 +162,6 @@ void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
     while(current_var != NULL)
     {
         eVariable *var = (eVariable *) current_var->data;
-        // if(strcmp(var->identifier, assignment.identifier) == 0)
         if(e_string_compare(var->identifier, assignment.identifier))
         {
             if(var->type == AT_CONST)
@@ -202,7 +186,6 @@ eValue e_get_value(eString identifier, eScope *scope)
     while(current != NULL)
     {
         eVariable *var = (eVariable *) current->data;
-        // if(strcmp(var->identifier, identifier) == 0)
         if(e_string_compare(var->identifier, identifier))
         {
             return var->value;
@@ -213,25 +196,3 @@ eValue e_get_value(eString identifier, eScope *scope)
 
     return (eValue) {.type = VT_INVALID};
 }
-
-/*
-void e_free_scope(eScope *self)
-{
-    eListNode *current = self->variables;
-    while(current != NULL)
-    {
-        e_free_variable(current->data);
-
-        current = current->next;
-    }
-
-    e_list_free(&self->variables);
-}
-*/
-
-/*
-void e_free_variable(eVariable *self)
-{
-    free(self->identifier);
-}
-*/

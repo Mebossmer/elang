@@ -2,51 +2,64 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static eArenaRegion *region_new(size_t size)
+{
+    eArenaRegion *region = calloc(1, sizeof(eArenaRegion));
+    region->ptr = calloc(size, 1);
+    region->size = size;
+    region->used = 0;
+    region->next = NULL;
+
+    return region;
+}
+
+static void region_free(eArenaRegion *region)
+{
+    free(region->ptr);
+    free(region);
+}
+
 eArena e_arena_new(size_t size)
 {
-    void *ptr = calloc(size, 1);
+    eArenaRegion *region = region_new(size);
 
     return (eArena) {
-        .base = ptr,
-        .size = size,
-        .used = 0
+        .regions = region,
+        .current = region
     };
 }
 
 void e_arena_free(eArena *arena)
 {
-    free(arena->base);
+    eArenaRegion *current = arena->regions;
+    while(current != NULL)
+    {
+        eArenaRegion *tmp = current->next;
+
+        region_free(current);
+
+        current = tmp;
+    }
 }
 
 void *e_arena_alloc(eArena *arena, size_t size)
 {
-    if(arena->used + size >= arena->size)
+    if(arena->current->used + size >= arena->current->size)
     {
-        // e_arena_resize(arena, arena->used * 2);
-        fprintf(stderr, "Arena overflowed: %ld bytes of %ld bytes\n", arena->used + size, arena->size);
+        if(size >= arena->regions->size)
+        {
+            arena->regions->next = region_new(size);
+        }
+        else
+        {
+            arena->regions->next = region_new(arena->regions->size);
+        }
 
-        exit(-1);
+        arena->current = arena->regions->next;
     }
 
-    void *ptr = arena->base + arena->used;
-    arena->used += size;
+    void *ptr = arena->current->ptr + arena->current->used;
+    arena->current->used += size;
 
     return ptr;
 }
-
-/*
-void e_arena_resize(eArena *arena, size_t size)
-{
-    void *new_ptr = realloc(arena->base, size);
-    if(new_ptr == NULL)
-    {
-        fprintf(stderr, "Failed to resize an arena\n");
-
-        exit(-1);
-    }
-
-    arena->base = new_ptr;
-
-    arena->size = size;
-}
-*/

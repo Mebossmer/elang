@@ -17,8 +17,6 @@ struct elistnode
 
 void e_list_push(eArena *arena, eListNode **head, void *data, size_t size);
 
-// void e_list_free(eListNode **head);
-
 void *e_list_at(eListNode *head, size_t index);
 
 size_t e_list_len(eListNode *head);
