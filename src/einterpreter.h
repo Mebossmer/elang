@@ -20,13 +20,13 @@ typedef struct
     {
         int integer;
 
-        char *string;
+        eString string;
     };
 } eValue;
 
 typedef struct
 {
-    char *identifier;
+    eString identifier;
 
     eValue value;
 
@@ -46,7 +46,7 @@ void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);
 
 void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope);
 
-eValue e_get_value(const char *identifier, eScope *scope);
+eValue e_get_value(eString identifier, eScope *scope);
 
 // void e_free_scope(eScope *self);
 

@@ -54,12 +54,12 @@ typedef struct
 
 typedef struct
 {
-    char *value;
+    eString value;
 } eASTStringLiteral;
 
 typedef struct
 {
-    char *identifier;
+    eString identifier;
 
     eASTNode *init;
 
@@ -68,14 +68,14 @@ typedef struct
 
 typedef struct
 {
-    char *identifier;
+    eString identifier;
 
     eASTNode *init;
 } eASTAssignment;
 
 typedef struct
 {
-    char *identifier;
+    eString identifier;
 
     eListNode *arguments;
 } eASTFunctionCall;
@@ -98,7 +98,7 @@ struct eastnode
 
         eASTStringLiteral string_literal;
         
-        char *identifier;
+        eString identifier;
     };
 };
 

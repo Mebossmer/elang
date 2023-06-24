@@ -163,26 +163,24 @@ eASTNode *e_parse_factor(eArena *arena, eParser *self)
     }
     else if(accept(self, ETK_STRING))
     {
+        /*
         char *tmp = e_arena_alloc(arena, tk->len - 1);
         memcpy(tmp, self->src.ptr + tk->start + 1, tk->len - 2);
         tmp[tk->len - 2] = '\0';
+        */
 
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_STRING_LITERAL,
             .string_literal = (eASTStringLiteral) {
-                .value = tmp
+                .value = e_string_slice(self->src, tk->start + 1, tk->len - 2)
             }
         });
     }
     else if(accept(self, ETK_IDENTIFIER))
     {
-        char *tmp = e_arena_alloc(arena, tk->len + 1);
-        memcpy(tmp, self->src.ptr + tk->start, tk->len);
-        tmp[tk->len] = '\0';
-
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_IDENTIFIER,
-            .identifier = tmp
+            .identifier = e_string_slice(self->src, tk->start, tk->len)
         });
     }
     else if(accept(self, ETK_L_PAREN))
@@ -314,16 +312,18 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
             return NULL;
         }
 
+        /*
         char *id = e_arena_alloc(arena, identifier->len + 1);
         memcpy(id, self->src.ptr + identifier->start, identifier->len);
         id[identifier->len] = '\0';
+        */
 
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_DECLARATION,
             .declaration = (eASTDeclaration) {
                 .type = get_assignment_type(tk->tag),
                 .init = e_parse_expression(arena, self),
-                .identifier = id
+                .identifier = e_string_slice(self->src, identifier->start, identifier->len)
             }
         });
     }
@@ -332,9 +332,11 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
         // Variable assignment
         if(accept(self, ETK_L_PAREN))
         {
+            /*
             char *id = e_arena_alloc(arena, tk->len + 1);
             memcpy(id, self->src.ptr + tk->start, tk->len);
             id[tk->len] = '\0';
+            */
 
             eListNode *arguments = NULL;
             do
@@ -352,22 +354,24 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
             return e_ast_alloc(arena, (eASTNode) {
                 .tag = AST_FUNCTION_CALL,
                 .function_call = (eASTFunctionCall) {
-                    .identifier = id,
+                    .identifier = e_string_slice(self->src, tk->start, tk->len),
                     .arguments = arguments
                 }
             });
         }
         else if(accept(self, ETK_EQUALS))
         {
+            /*
             char *id = e_arena_alloc(arena, tk->len + 1);
             memcpy(id, self->src.ptr + tk->start, tk->len);
             id[tk->len] = '\0';
+            */
 
             return e_ast_alloc(arena, (eASTNode) {
                 .tag = AST_ASSIGNMENT,
                 .assignment = (eASTAssignment) {
                     .init = e_parse_expression(arena, self),
-                    .identifier = id
+                    .identifier = e_string_slice(self->src, tk->start, tk->len)
                 }
             });
         }

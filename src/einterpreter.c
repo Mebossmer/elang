@@ -8,7 +8,7 @@ typedef eValue(* BuiltinFunction)(eArena *arena, eScope *scope, eListNode *argum
 
 typedef struct
 {
-    const char *identifier;
+    eString identifier;
 
     BuiltinFunction func;
 
@@ -16,8 +16,8 @@ typedef struct
 } FunctionMap;
 
 static FunctionMap builtin_functions[] = {
-    {.identifier = "print", .func = __e_print, .num_arguments = 1},
-    {.identifier = "exit", .func = __e_exit, .num_arguments = 1}
+    {.identifier = {.ptr = "print", .len = 5}, .func = __e_print, .num_arguments = 1},
+    {.identifier = {.ptr = "exit", .len = 4}, .func = __e_exit, .num_arguments = 1}
 };
 
 eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
@@ -32,14 +32,14 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_STRING_LITERAL: {
-        size_t len = strlen(node->string_literal.value);
-        char *tmp = e_arena_alloc(arena, len + 1);
-        memcpy(tmp, node->string_literal.value, len);
-        tmp[len] = '\0';
+        // size_t len = strlen(node->string_literal.value);
+        // char *tmp = e_arena_alloc(arena, len + 1);
+        // memcpy(tmp, node->string_literal.value, len);
+        // tmp[len] = '\0';
 
         return (eValue) {
             .type = VT_STRING,
-            .string = tmp
+            .string = node->string_literal.value
         };
     }
 
@@ -122,7 +122,8 @@ eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 {
     for(size_t i = 0; i < sizeof(builtin_functions) / sizeof(FunctionMap); i++)
     {
-        if(strcmp(call.identifier, builtin_functions[i].identifier) == 0)
+        // if(strcmp(call.identifier, builtin_functions[i].identifier) == 0)
+        if(e_string_compare(call.identifier, builtin_functions[i].identifier))
         {
             if(e_list_len(call.arguments) != builtin_functions[i].num_arguments)
             {
@@ -144,7 +145,8 @@ void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
     while(current != NULL)
     {
         eVariable *var = (eVariable *) current->data;
-        if(strcmp(var->identifier, declaration.identifier) == 0)
+        // if(strcmp(var->identifier, declaration.identifier) == 0)
+        if(e_string_compare(var->identifier, declaration.identifier))
         {
             fprintf(stderr, "A variable with that name already exists\n");
 
@@ -154,14 +156,16 @@ void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
         current = current->next;
     }
 
+    /*
     size_t len = strlen(declaration.identifier);
 
     char *tmp = e_arena_alloc(arena, len + 1);
     memcpy(tmp, declaration.identifier, len);
     tmp[len] = '\0';
+    */
 
     e_list_push(arena, &scope->variables, &(eVariable) {
-        .identifier = tmp,
+        .identifier = declaration.identifier,
         .value = e_evaluate(arena, declaration.init, scope),
         .type = declaration.type
     }, sizeof(eVariable));
@@ -173,7 +177,8 @@ void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
     while(current_var != NULL)
     {
         eVariable *var = (eVariable *) current_var->data;
-        if(strcmp(var->identifier, assignment.identifier) == 0)
+        // if(strcmp(var->identifier, assignment.identifier) == 0)
+        if(e_string_compare(var->identifier, assignment.identifier))
         {
             if(var->type == AT_CONST)
             {
@@ -191,13 +196,14 @@ void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
     }
 }
 
-eValue e_get_value(const char *identifier, eScope *scope)
+eValue e_get_value(eString identifier, eScope *scope)
 {
     eListNode *current = scope->variables;
     while(current != NULL)
     {
         eVariable *var = (eVariable *) current->data;
-        if(strcmp(var->identifier, identifier) == 0)
+        // if(strcmp(var->identifier, identifier) == 0)
+        if(e_string_compare(var->identifier, identifier))
         {
             return var->value;
         }

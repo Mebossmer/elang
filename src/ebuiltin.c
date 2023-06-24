@@ -2,6 +2,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+static void println(eString string)
+{
+    for(size_t i = 0; i < string.len; i++)
+    {
+        putc(string.ptr[i], stdout);
+    }
+
+    putc('\n', stdout);
+}
+
 eValue __e_print(eArena *arena, eScope *scope, eListNode *arguments)
 {
     eValue value = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
@@ -14,7 +24,8 @@ eValue __e_print(eArena *arena, eScope *scope, eListNode *arguments)
         break;
 
     case VT_STRING:
-        printf("%s\n", value.string);
+        // printf("%s\n", value.string.ptr);
+        println(value.string);
 
         break;
     }
