@@ -43,6 +43,8 @@ typedef struct
 
 eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope);
 
+void e_evaluate_body(eArena *arena, eListNode *body, eScope *scope);
+
 eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope);
 
 void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);

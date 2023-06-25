@@ -9,4 +9,10 @@ print(bar * 45)
 
 print("Hello from e lang!")
 
-if true and true
+var foobar = true
+var barfoo = true
+
+if barfoo and foobar
+{
+    print("Hello from the if statement")
+}

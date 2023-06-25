@@ -27,6 +27,20 @@ eValue __e_print(eArena *arena, eScope *scope, eListNode *arguments)
         println(value.string);
 
         break;
+
+    case VT_BOOL:
+        switch(value.boolean)
+        {
+        case true:
+            printf("true\n");
+
+            break;
+        
+        case false:
+            printf("false\n");
+
+            break;
+        }
     }
 
     return (eValue) {.type = VT_INVALID};

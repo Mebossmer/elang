@@ -358,11 +358,23 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
     }
     else if(accept(self, ETK_KEYWORD_IF))
     {
+        eASTNode *condition = e_parse_condition(arena, self);
+        if(condition == NULL)
+        {
+            return NULL;
+        }
+
+        eListNode *body = e_parse_body(arena, self);
+        if(body == NULL)
+        {
+            return NULL;
+        }
+
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_IF_STATEMENT,
             .if_statement = (eASTIfStatement) {
-                .condition = e_parse_condition(arena, self),
-                .body = NULL // TODO
+                .condition = condition,
+                .body = body
             }
         });
     }
@@ -377,4 +389,33 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
     e_errcode = ERR_UNKNOWN_STATEMENT;
 
     return NULL;
+}
+
+eListNode *e_parse_body(eArena *arena, eParser *self)
+{
+    if(!expect(self, ETK_L_CURLY_BRACE))
+    {
+        return NULL;
+    }
+
+    eListNode *stmts = NULL;
+
+    eArena scratch = e_arena_new(2048);
+
+    do
+    {
+        eASTNode *stmt = e_parse_statement(&scratch, self);
+        if(stmt->tag == AST_EOF)
+        {
+            e_arena_free(&scratch);
+
+            return NULL;
+        }
+
+        e_list_push(arena, &stmts, stmt, sizeof(eASTNode));
+    } while(!accept(self, ETK_R_CURLY_BRACE));
+
+    e_arena_free(&scratch);
+
+    return stmts;
 }

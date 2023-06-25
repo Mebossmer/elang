@@ -160,3 +160,5 @@ eASTNode *e_parse_terminal(eArena *arena, eParser *self);
 eASTNode *e_parse_expression(eArena *arena, eParser *self);
 
 eASTNode *e_parse_statement(eArena *arena, eParser *self);
+
+eListNode *e_parse_body(eArena *arena, eParser *self);

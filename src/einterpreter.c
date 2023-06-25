@@ -112,7 +112,7 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
 
         if(condition.boolean)
         {
-            printf("Condition is true\n");
+            e_evaluate_body(arena, node->if_statement.body, scope);
         }
 
         return (eValue) {.type = VT_INVALID};
@@ -148,6 +148,17 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     default: {
         return (eValue) {.type = VT_INVALID};
     }
+    }
+}
+
+void e_evaluate_body(eArena *arena, eListNode *body, eScope *scope)
+{
+    eListNode *current = body;
+    while(current != NULL)
+    {
+        e_evaluate(arena, (eASTNode *) current->data, scope);
+
+        current = current->next;
     }
 }
 
