@@ -20,7 +20,7 @@ eString read_file(eArena *arena, const char *path)
 
     fseek(fp, 0, SEEK_SET);
 
-    eString txt = e_string_alloc(arena, len);
+    eString txt = e_string_alloc(arena, len + 1);
     if(!txt.ptr)
     {
         fprintf(stderr, "Failed to read file: %s\n", path);

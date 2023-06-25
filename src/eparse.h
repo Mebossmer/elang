@@ -11,13 +11,16 @@ typedef enum
 
     AST_NUMERIC_LITERAL,
     AST_STRING_LITERAL,
+    AST_BOOL_LITERAL,
     AST_IDENTIFIER,
 
     AST_ARITHMETIC,
+    AST_CONDITION,
     AST_FUNCTION_CALL,
 
     AST_DECLARATION,
-    AST_ASSIGNMENT
+    AST_ASSIGNMENT,
+    AST_IF_STATEMENT
 } eASTTag;
 
 typedef enum
@@ -30,6 +33,15 @@ typedef enum
 
     OP_INVALID
 } eOperation;
+
+typedef enum
+{
+    BOP_AND,
+    BOP_OR,
+    BOP_NOT,
+
+    BOP_INVALID
+} eBooleanOperation;
 
 typedef enum
 {
@@ -49,6 +61,21 @@ typedef struct
 
 typedef struct
 {
+    eASTNode *rhs;
+    eASTNode *lhs;
+
+    eBooleanOperation op;
+} eASTCondition;
+
+typedef struct
+{
+    eASTNode *condition;
+
+    eListNode *body; // eASTNode *
+} eASTIfStatement;
+
+typedef struct
+{
     int value;
 } eASTNumericLiteral;
 
@@ -56,6 +83,11 @@ typedef struct
 {
     eString value;
 } eASTStringLiteral;
+
+typedef struct
+{
+    bool value;
+} eASTBoolLiteral;
 
 typedef struct
 {
@@ -97,8 +129,14 @@ struct eastnode
         eASTFunctionCall function_call;
 
         eASTStringLiteral string_literal;
+
+        eASTBoolLiteral bool_literal;
         
         eString identifier;
+
+        eASTCondition condition;
+
+        eASTIfStatement if_statement;
     };
 };
 

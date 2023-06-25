@@ -9,6 +9,7 @@ typedef struct etokenlist eTokenList;
 
 typedef enum
 {
+    ETK_EOF,
     ETK_UNKNOWN,
 
     ETK_IDENTIFIER,
@@ -17,6 +18,11 @@ typedef enum
 
     ETK_KEYWORD_VAR,
     ETK_KEYWORD_CONST,
+    ETK_KEYWORD_TRUE,
+    ETK_KEYWORD_FALSE,
+    ETK_KEYWORD_IF,
+    ETK_KEYWORD_AND,
+    ETK_KEYWORD_OR,
 
     ETK_EQUALS,
     ETK_PLUS,
@@ -24,6 +30,13 @@ typedef enum
     ETK_ASTERISK,
     ETK_SLASH,
     ETK_PERCENT,
+    ETK_AMPERSAND,
+    ETK_PIPE,
+    ETK_EXCLAMATION,
+    ETK_L_ANGLE,
+    ETK_R_ANGLE,
+    ETK_L_CURLY_BRACE,
+    ETK_R_CURLY_BRACE,
 
     ETK_L_PAREN,
     ETK_R_PAREN,

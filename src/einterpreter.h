@@ -7,6 +7,7 @@ typedef enum
 {
     VT_INT,
     VT_STRING,
+    VT_BOOL,
 
     VT_INVALID,
     VT_ERROR
@@ -21,6 +22,8 @@ typedef struct
         int integer;
 
         eString string;
+
+        bool boolean;
     };
 } eValue;
 

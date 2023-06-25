@@ -10,7 +10,8 @@ typedef enum
     ERR_UNEXPECTED_TOKEN,
     ERR_SYNTAX,
     ERR_UNKNOWN_STATEMENT,
-    ERR_ARGUMENT_COUNT
+    ERR_ARGUMENT_COUNT,
+    ERR_INVALID_BOOL_OPERATOR
 } eError;
 
 extern eError e_errcode;

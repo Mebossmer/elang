@@ -116,6 +116,24 @@ eASTNode *e_parse_factor(eArena *arena, eParser *self)
             .identifier = e_string_slice(self->src, tk->start, tk->len)
         });
     }
+    else if(accept(self, ETK_KEYWORD_FALSE))
+    {
+        return e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_BOOL_LITERAL,
+            .bool_literal = (eASTBoolLiteral) {
+                .value = false
+            }
+        });
+    }
+    else if(accept(self, ETK_KEYWORD_TRUE))
+    {
+        return e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_BOOL_LITERAL,
+            .bool_literal = (eASTBoolLiteral) {
+                .value = true
+            }
+        });
+    }
     else if(accept(self, ETK_L_PAREN))
     {
         eASTNode *node = e_parse_expression(arena, self);
@@ -205,6 +223,53 @@ eASTNode *e_parse_expression(eArena *arena, eParser *self)
     return lhs;
 }
 
+static eBooleanOperation get_boolean_operator(eTokenTag tag)
+{
+    switch(tag)
+    {
+    case ETK_KEYWORD_AND:
+        return BOP_AND;
+
+    case ETK_EXCLAMATION:
+        return BOP_NOT;
+    
+    case ETK_KEYWORD_OR:
+        return BOP_OR;
+
+    default:
+        return BOP_INVALID;
+    }
+}
+
+eASTNode *e_parse_condition(eArena *arena, eParser *self)
+{
+    eASTNode *lhs = e_parse_expression(arena, self);
+
+    eToken *tk = E_LIST_AT(self->tokens, self->index, eToken *);
+
+    eBooleanOperation op = get_boolean_operator(tk->tag);
+    if(op == BOP_INVALID)
+    {
+        e_errcode = ERR_INVALID_BOOL_OPERATOR;
+        e_errline = tk->line;
+
+        return NULL;
+    }
+
+    self->index++;
+
+    eASTNode *rhs = e_parse_expression(arena, self);
+
+    return e_ast_alloc(arena, (eASTNode) {
+        .tag = AST_CONDITION,
+        .condition = (eASTCondition) {
+            .lhs = lhs,
+            .rhs = rhs,
+            .op = op
+        }
+    });
+}
+
 static eAssignmentType get_assignment_type(eTokenTag tag)
 {
     switch(tag)
@@ -290,6 +355,22 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
                 }
             });
         }
+    }
+    else if(accept(self, ETK_KEYWORD_IF))
+    {
+        return e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_IF_STATEMENT,
+            .if_statement = (eASTIfStatement) {
+                .condition = e_parse_condition(arena, self),
+                .body = NULL // TODO
+            }
+        });
+    }
+    else if(accept(self, ETK_EOF))
+    {
+        return e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_EOF
+        });
     }
 
     e_errline = tk->line;

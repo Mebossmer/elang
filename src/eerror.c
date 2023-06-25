@@ -25,6 +25,9 @@ const char *e_get_error()
     case ERR_ARGUMENT_COUNT:
         return "wrong amount of arguments provided";
 
+    case ERR_INVALID_BOOL_OPERATOR:
+        return "invalid bool operator";
+
     default:
         return "unknown error";
     }

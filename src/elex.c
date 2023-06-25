@@ -19,10 +19,71 @@ typedef struct
     eTokenTag tag;
 } KeywordMap;
 
+typedef struct
+{
+    char c;
+    eTokenTag tag;
+} SpecialMap;
+
 static KeywordMap keywords[] = {
     {.text = {.ptr = "var", .len = 3}, .tag = ETK_KEYWORD_VAR},
-    {.text = {.ptr = "const", .len = 5}, .tag = ETK_KEYWORD_CONST}
+    {.text = {.ptr = "const", .len = 5}, .tag = ETK_KEYWORD_CONST},
+    {.text = {.ptr = "true", .len = 4}, .tag = ETK_KEYWORD_TRUE},
+    {.text = {.ptr = "false", .len = 5}, .tag = ETK_KEYWORD_FALSE},
+    {.text = {.ptr = "if", .len = 2}, .tag = ETK_KEYWORD_IF},
+    {.text = {.ptr = "and", .len = 3}, .tag = ETK_KEYWORD_AND},
+    {.text = {.ptr = "or", .len = 2}, .tag = ETK_KEYWORD_OR}
 };
+
+static SpecialMap special[] = {
+    {.c = '=', .tag = ETK_EQUALS},
+    {.c = '+', .tag = ETK_PLUS},
+    {.c = '-', .tag = ETK_MINUS},
+    {.c = '*', .tag = ETK_ASTERISK},
+    {.c = '/', .tag = ETK_SLASH},
+    {.c = '%', .tag = ETK_PERCENT},
+    {.c = '(', .tag = ETK_L_PAREN},
+    {.c = ')', .tag = ETK_R_PAREN},
+    {.c = ',', .tag = ETK_COMMA},
+    {.c = '<', .tag = ETK_L_ANGLE},
+    {.c = '>', .tag = ETK_R_ANGLE},
+    {.c = '&', .tag = ETK_AMPERSAND},
+    {.c = '|', .tag = ETK_PIPE},
+    {.c = '{', .tag = ETK_L_CURLY_BRACE},
+    {.c = '}', .tag = ETK_R_CURLY_BRACE},
+    {.c = '!', .tag = ETK_EXCLAMATION}
+};
+
+static eToken lex_special_character(eString src, size_t start, size_t line)
+{
+    eToken tk = {0};
+
+    char c = src.ptr[start];
+
+    for(size_t i = 0; i < ARR_LEN(special); i++)
+    {
+        if(c == special[i].c)
+        {
+            tk.start = start;
+            tk.len = 1;
+            tk.line = line;
+            tk.tag = special[i].tag;
+
+            goto done;
+        }
+    }
+
+    e_errcode = ERR_UNKNOWN_TOKEN;
+    e_errline = line;
+
+    tk.start = start;
+    tk.len = 1;
+    tk.line = line;
+    tk.tag = ETK_UNKNOWN;
+
+done:
+    return tk;
+}
 
 static eToken lex_identifier(eString src, size_t start, size_t line)
 {
@@ -113,7 +174,18 @@ eListNode *e_lex(eArena *arena, eString src)
 
         char c = src.ptr[i];
 
-        if(c == '\t' || c == ' ')
+        if(c == '\0')
+        {
+            e_list_push(arena, &tokens, &(eToken) {
+                .tag = ETK_EOF,
+                .len = 0,
+                .line = line,
+                .start = i
+            }, sizeof(eToken));
+
+            return tokens;
+        }
+        else if(c == '\t' || c == ' ')
         {
             i++;
 
@@ -128,45 +200,7 @@ eListNode *e_lex(eArena *arena, eString src)
         }
         else if(c == '"')
         {
-            // String literal
-
             tk = lex_string(src, i, line);
-        }
-        else if(c == '=')
-        {
-            tk = SINGLE_CHARACTER_TOKEN(ETK_EQUALS, line, i);
-        }
-        else if(c == '+')
-        {
-            tk = SINGLE_CHARACTER_TOKEN(ETK_PLUS, line, i);
-        }
-        else if(c == '-')
-        {
-            tk = SINGLE_CHARACTER_TOKEN(ETK_MINUS, line, i);
-        }
-        else if(c == '*')
-        {
-            tk = SINGLE_CHARACTER_TOKEN(ETK_ASTERISK, line, i);
-        }
-        else if(c == '/')
-        {
-            tk = SINGLE_CHARACTER_TOKEN(ETK_SLASH, line, i);
-        }
-        else if(c == '%')
-        {
-            tk = SINGLE_CHARACTER_TOKEN(ETK_PERCENT, line, i);
-        }
-        else if(c == '(')
-        {
-            tk = SINGLE_CHARACTER_TOKEN(ETK_L_PAREN, line, i);
-        }
-        else if(c == ')')
-        {
-            tk = SINGLE_CHARACTER_TOKEN(ETK_R_PAREN, line, i);
-        }
-        else if(c == ',')
-        {
-            tk = SINGLE_CHARACTER_TOKEN(ETK_COMMA, line, i);
         }
         else if(isalpha(c))
         {
@@ -182,6 +216,11 @@ eListNode *e_lex(eArena *arena, eString src)
         }
         else
         {
+            tk = lex_special_character(src, i, line);
+        }
+        /*
+        else
+        {
             e_errcode = ERR_UNKNOWN_TOKEN;
             e_errline = line;
 
@@ -192,6 +231,7 @@ eListNode *e_lex(eArena *arena, eString src)
                 .len = 1
             };
         }
+        */
 
         i += tk.len;
         e_list_push(arena, &tokens, &tk, sizeof(eToken));

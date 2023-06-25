@@ -107,6 +107,44 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
         return e_call(arena, node->function_call, scope);
     }
 
+    case AST_IF_STATEMENT: {
+        eValue condition = e_evaluate(arena, node->if_statement.condition, scope);
+
+        if(condition.boolean)
+        {
+            printf("Condition is true\n");
+        }
+
+        return (eValue) {.type = VT_INVALID};
+    }
+
+    case AST_BOOL_LITERAL: {
+        return (eValue) {.type = VT_BOOL, .boolean = node->bool_literal.value};
+    }
+
+    case AST_CONDITION: {
+        eValue lhs = e_evaluate(arena, node->condition.lhs, scope);
+        eValue rhs = e_evaluate(arena, node->condition.rhs, scope);
+
+        switch(node->condition.op)
+        {
+        case BOP_AND:
+            return (eValue) {
+                .type = VT_BOOL,
+                .boolean = lhs.boolean && rhs.boolean
+            };
+
+        case BOP_OR:
+            return (eValue) {
+                .type = VT_BOOL,
+                .boolean = lhs.boolean || rhs.boolean
+            };
+
+        default:
+            return (eValue) {.type = VT_INVALID};
+        }
+    }
+
     default: {
         return (eValue) {.type = VT_INVALID};
     }
