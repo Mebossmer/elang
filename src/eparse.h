@@ -20,7 +20,8 @@ typedef enum
 
     AST_DECLARATION,
     AST_ASSIGNMENT,
-    AST_IF_STATEMENT
+    AST_IF_STATEMENT,
+    AST_WHILE_LOOP
 } eASTTag;
 
 typedef enum
@@ -39,9 +40,12 @@ typedef enum
     BOP_AND,
     BOP_OR,
     BOP_NOT,
+    BOP_IS_EQUAL,
+    BOP_IS_LESS,
+    BOP_IS_GREATER,
 
     BOP_INVALID
-} eBooleanOperation;
+} eCondition;
 
 typedef enum
 {
@@ -64,7 +68,7 @@ typedef struct
     eASTNode *rhs;
     eASTNode *lhs;
 
-    eBooleanOperation op;
+    eCondition op;
 } eASTCondition;
 
 typedef struct
@@ -73,6 +77,13 @@ typedef struct
 
     eListNode *body; // eASTNode *
 } eASTIfStatement;
+
+typedef struct
+{
+    eASTNode *condition;
+
+    eListNode *body;
+} eASTWhileLoop;
 
 typedef struct
 {
@@ -137,6 +148,8 @@ struct eastnode
         eASTCondition condition;
 
         eASTIfStatement if_statement;
+
+        eASTWhileLoop while_loop;
     };
 };
 
@@ -158,6 +171,10 @@ eASTNode *e_parse_factor(eArena *arena, eParser *self);
 eASTNode *e_parse_terminal(eArena *arena, eParser *self);
 
 eASTNode *e_parse_expression(eArena *arena, eParser *self);
+
+eASTNode *e_parse_conditional_factor(eArena *arena, eParser *self);
+
+eASTNode *e_parse_condition(eArena *arena, eParser *self);
 
 eASTNode *e_parse_statement(eArena *arena, eParser *self);
 

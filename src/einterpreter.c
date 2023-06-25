@@ -126,6 +126,19 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
         return (eValue) {.type = VT_INVALID};
     }
 
+    case AST_WHILE_LOOP: {
+        eValue condition = e_evaluate(arena, node->while_loop.condition, scope);
+
+        while(condition.boolean)
+        {
+            e_evaluate_body(arena, node->while_loop.body, scope);
+
+            condition = e_evaluate(arena, node->while_loop.condition, scope);
+        }
+
+        return (eValue) {.type = VT_INVALID};
+    }
+
     case AST_BOOL_LITERAL: {
         return (eValue) {.type = VT_BOOL, .boolean = node->bool_literal.value};
     }
@@ -146,6 +159,24 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
             return (eValue) {
                 .type = VT_BOOL,
                 .boolean = lhs.boolean || rhs.boolean
+            };
+
+        case BOP_IS_EQUAL:
+            return (eValue) {
+                .type = VT_BOOL,
+                .boolean = lhs.integer == rhs.integer // TODO: very bad
+            };
+
+        case BOP_IS_LESS:
+            return (eValue) {
+                .type = VT_BOOL,
+                .boolean = lhs.integer < rhs.integer // TODO: also very bad
+            };
+
+        case BOP_IS_GREATER:
+            return (eValue) {
+                .type = VT_BOOL,
+                .boolean = lhs.integer > rhs.integer // TODO: pathetic
             };
 
         default:

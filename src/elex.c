@@ -31,12 +31,13 @@ static KeywordMap keywords[] = {
     {.text = {.ptr = "true", .len = 4}, .tag = ETK_KEYWORD_TRUE},
     {.text = {.ptr = "false", .len = 5}, .tag = ETK_KEYWORD_FALSE},
     {.text = {.ptr = "if", .len = 2}, .tag = ETK_KEYWORD_IF},
+    {.text = {.ptr = "while", .len = 5}, .tag = ETK_KEYWORD_WHILE},
     {.text = {.ptr = "and", .len = 3}, .tag = ETK_KEYWORD_AND},
     {.text = {.ptr = "or", .len = 2}, .tag = ETK_KEYWORD_OR}
 };
 
 static SpecialMap special[] = {
-    {.c = '=', .tag = ETK_EQUALS},
+    // {.c = '=', .tag = ETK_EQUALS},
     {.c = '+', .tag = ETK_PLUS},
     {.c = '-', .tag = ETK_MINUS},
     {.c = '*', .tag = ETK_ASTERISK},
@@ -53,6 +54,26 @@ static SpecialMap special[] = {
     {.c = '}', .tag = ETK_R_CURLY_BRACE},
     {.c = '!', .tag = ETK_EXCLAMATION}
 };
+
+static eToken lex_equals_sign(eString src, size_t start, size_t line)
+{
+    eToken tk = {0};
+
+    char c = src.ptr[start + 1];
+
+    tk.start = start;
+    tk.len = 1;
+    tk.line = line;
+    tk.tag = ETK_EQUALS;
+
+    if(c == '=')
+    {
+        tk.len = 2;
+        tk.tag = ETK_DOUBLE_EQUALS;
+    }
+
+    return tk;
+}
 
 static eToken lex_special_character(eString src, size_t start, size_t line)
 {
@@ -213,6 +234,10 @@ eListNode *e_lex(eArena *arena, eString src)
         else if(c == '"')
         {
             tk = lex_string(src, i, line);
+        }
+        else if(c == '=')
+        {
+            tk = lex_equals_sign(src, i, line);
         }
         else if(isalpha(c))
         {

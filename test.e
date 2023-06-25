@@ -12,7 +12,16 @@ print("Hello from e lang!")
 var foobar = true
 var barfoo = true
 
-if barfoo and foobar
+if bar > foo or (2 == 2 and 3 > 4)
 {
     print("Hello from the if statement")
+}
+
+var i = 0
+
+while i < 4
+{
+    print(i)
+
+    i = i + 1
 }

@@ -223,31 +223,126 @@ eASTNode *e_parse_expression(eArena *arena, eParser *self)
     return lhs;
 }
 
-static eBooleanOperation get_boolean_operator(eTokenTag tag)
+static eCondition get_conditional_operator(eTokenTag tag)
 {
     switch(tag)
     {
     case ETK_KEYWORD_AND:
         return BOP_AND;
 
+    /*
     case ETK_EXCLAMATION:
         return BOP_NOT;
+    */
     
     case ETK_KEYWORD_OR:
         return BOP_OR;
+
+    case ETK_DOUBLE_EQUALS:
+        return BOP_IS_EQUAL;
+    
+    case ETK_L_ANGLE:
+        return BOP_IS_LESS;
+
+    case ETK_R_ANGLE:
+        return BOP_IS_GREATER;
 
     default:
         return BOP_INVALID;
     }
 }
 
+eASTNode *e_parse_conditional_factor(eArena *arena, eParser *self)
+{
+    if(accept(self, ETK_L_PAREN))
+    {
+        eASTNode *node = e_parse_condition(arena, self);
+
+        if(!expect(self, ETK_R_PAREN))
+        {
+            return NULL; // TODO: this is terrible
+        }
+
+        return node;
+    }
+
+    eASTNode *lhs = e_parse_expression(arena, self);
+    if(self->index >= e_list_len(self->tokens))
+    {
+        return lhs;
+    }
+
+    while(E_LIST_AT(self->tokens, self->index, eToken *)->tag == ETK_L_ANGLE ||
+          E_LIST_AT(self->tokens, self->index, eToken *)->tag == ETK_R_ANGLE ||
+          E_LIST_AT(self->tokens, self->index, eToken *)->tag == ETK_DOUBLE_EQUALS)
+    {
+        eCondition op = get_conditional_operator(E_LIST_AT(self->tokens, self->index, eToken *)->tag);
+
+        self->index++;
+
+        eASTNode *rhs = e_parse_expression(arena, self);
+
+        lhs = e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_CONDITION,
+            .condition = (eASTCondition) {
+                .lhs = lhs,
+                .rhs = rhs,
+                .op = op
+            }
+        });
+
+        if(self->index >= e_list_len(self->tokens))
+        {
+            return lhs;
+        }
+    }
+
+    return lhs;
+}
+
+eASTNode *e_parse_condition(eArena *arena, eParser *self)
+{
+    eASTNode *lhs = e_parse_conditional_factor(arena, self);
+    if(self->index >= e_list_len(self->tokens))
+    {
+        return lhs;
+    }
+
+    while(E_LIST_AT(self->tokens, self->index, eToken *)->tag == ETK_KEYWORD_AND ||
+          E_LIST_AT(self->tokens, self->index, eToken *)->tag == ETK_KEYWORD_OR)
+    {
+        eCondition op = get_conditional_operator(E_LIST_AT(self->tokens, self->index, eToken *)->tag);
+
+        self->index++;
+
+        eASTNode *rhs = e_parse_conditional_factor(arena, self);
+
+        lhs = e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_CONDITION,
+            .condition = (eASTCondition) {
+                .lhs = lhs,
+                .rhs = rhs,
+                .op = op
+            }
+        });
+
+        if(self->index >= e_list_len(self->tokens))
+        {
+            return lhs;
+        }
+    }
+
+    return lhs;
+}
+
+/*
 eASTNode *e_parse_condition(eArena *arena, eParser *self)
 {
     eASTNode *lhs = e_parse_expression(arena, self);
 
     eToken *tk = E_LIST_AT(self->tokens, self->index, eToken *);
 
-    eBooleanOperation op = get_boolean_operator(tk->tag);
+    eCondition op = get_conditional_operator(tk->tag);
     if(op == BOP_INVALID)
     {
         e_errcode = ERR_INVALID_BOOL_OPERATOR;
@@ -269,6 +364,7 @@ eASTNode *e_parse_condition(eArena *arena, eParser *self)
         }
     });
 }
+*/
 
 static eAssignmentType get_assignment_type(eTokenTag tag)
 {
@@ -373,6 +469,30 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_IF_STATEMENT,
             .if_statement = (eASTIfStatement) {
+                .condition = condition,
+                .body = body
+            }
+        });
+    }
+    else if(accept(self, ETK_KEYWORD_WHILE))
+    {
+        // This is basically the same as the if statement
+
+        eASTNode *condition = e_parse_condition(arena, self);
+        if(condition == NULL)
+        {
+            return NULL;
+        }
+
+        eListNode *body = e_parse_body(arena, self);
+        if(body == NULL)
+        {
+            return NULL;
+        }
+
+        return e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_WHILE_LOOP,
+            .while_loop = (eASTWhileLoop) {
                 .condition = condition,
                 .body = body
             }
