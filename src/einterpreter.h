@@ -47,8 +47,8 @@ void e_evaluate_body(eArena *arena, eListNode *body, eScope *scope);
 
 eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope);
 
-void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);
+bool e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);
 
-void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope);
+bool e_assign(eArena *arena, eASTAssignment assignment, eScope *scope);
 
 eValue e_get_value(eString identifier, eScope *scope);

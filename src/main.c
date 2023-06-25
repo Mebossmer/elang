@@ -84,7 +84,13 @@ int main(int argc, char **argv)
 
     while(expr->tag != AST_EOF)
     {
-        e_evaluate(&arena, expr, &global);
+        eValue value = e_evaluate(&arena, expr, &global);
+        if(value.type == VT_ERROR)
+        {
+            fprintf(stderr, "Runtime error: %s\n", e_get_error());
+
+            return -4;
+        }
 
         expr = e_parse_statement(&arena, &parser);
 

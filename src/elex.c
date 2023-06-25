@@ -156,6 +156,18 @@ static eToken lex_string(eString src, size_t start, size_t line)
 
             break;
         }
+        else if(c == '\0' || c == '\n')
+        {
+            e_errcode = ERR_MISSING_QUOTATION_MARK;
+            e_errline = line;
+
+            return (eToken) {
+                .tag = ETK_UNKNOWN,
+                .start = start,
+                .line = line,
+                .len = 1
+            };
+        }
     }
 
     return tk;
@@ -235,6 +247,11 @@ eListNode *e_lex(eArena *arena, eString src)
 
         i += tk.len;
         e_list_push(arena, &tokens, &tk, sizeof(eToken));
+
+        if(tk.tag == ETK_UNKNOWN)
+        {
+            return tokens;
+        }
     }
 
     return tokens;

@@ -28,6 +28,18 @@ const char *e_get_error()
     case ERR_INVALID_BOOL_OPERATOR:
         return "invalid bool operator";
 
+    case ERR_UNKNOWN_IDENTIFIER:
+        return "unknown identifier";
+
+    case ERR_NAME_CONFLICT:
+        return "name conflict";
+
+    case ERR_CONST_REASSIGNMENT:
+        return "cannot reassign a constant variable";
+
+    case ERR_MISSING_QUOTATION_MARK:
+        return "missing quotation mark";
+
     default:
         return "unknown error";
     }

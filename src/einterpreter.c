@@ -1,5 +1,6 @@
 #include "einterpreter.h"
 #include "ebuiltin.h"
+#include "eerror.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -40,11 +41,12 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
 
     case AST_IDENTIFIER: {
         eValue value = e_get_value(node->identifier, scope);
-        if(value.type == VT_INVALID)
+        if(value.type == VT_ERROR)
         {
-            fprintf(stderr, "Unknown identifier\n");
+            e_errcode = ERR_UNKNOWN_IDENTIFIER;
+            e_errline = 0; // TODO
 
-            exit(1);
+            return (eValue) {.type = VT_ERROR};
         }
 
         return value;
@@ -92,13 +94,19 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_DECLARATION: {
-        e_declare(arena, node->declaration, scope);
+        if(!e_declare(arena, node->declaration, scope))
+        {
+            return (eValue) {.type = VT_ERROR};
+        }
 
         return (eValue) {.type = VT_INVALID};
     }
 
     case AST_ASSIGNMENT: {
-        e_assign(arena, node->assignment, scope);
+        if(!e_assign(arena, node->assignment, scope))
+        {
+            return (eValue) {.type = VT_ERROR};
+        }
 
         return (eValue) {.type = VT_INVALID};
     }
@@ -170,19 +178,23 @@ eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
         {
             if(e_list_len(call.arguments) != builtin_functions[i].num_arguments)
             {
-                fprintf(stderr, "Wrong amount of arguments provided\n");
+                e_errcode = ERR_ARGUMENT_COUNT;
+                e_errline = 0; // TODO
 
-                exit(1);
+                return (eValue) {.type = VT_ERROR};
             }
 
             return builtin_functions[i].func(arena, scope, call.arguments);
         }
     }
 
-    return (eValue) {.type = VT_INVALID};
+    e_errcode = ERR_UNKNOWN_IDENTIFIER;
+    e_errline = 0; // TODO
+
+    return (eValue) {.type = VT_ERROR};
 }
 
-void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
+bool e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
 {
     eListNode *current = scope->variables;
     while(current != NULL)
@@ -190,22 +202,31 @@ void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
         eVariable *var = (eVariable *) current->data;
         if(e_string_compare(var->identifier, declaration.identifier))
         {
-            fprintf(stderr, "A variable with that name already exists\n");
+            e_errcode = ERR_NAME_CONFLICT;
+            e_errline = 0; // TODO
 
-            exit(1);
+            return false;
         }
     
         current = current->next;
     }
 
+    eValue value = e_evaluate(arena, declaration.init, scope);
+    if(value.type == VT_ERROR)
+    {
+        return false;
+    }
+
     e_list_push(arena, &scope->variables, &(eVariable) {
         .identifier = declaration.identifier,
-        .value = e_evaluate(arena, declaration.init, scope),
+        .value = value,
         .type = declaration.type
     }, sizeof(eVariable));
+
+    return true;
 }
 
-void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
+bool e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
 {
     eListNode *current_var = scope->variables;
     while(current_var != NULL)
@@ -215,18 +236,21 @@ void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
         {
             if(var->type == AT_CONST)
             {
-                fprintf(stderr, "Cannot reassign a constant variable\n");
-
-                exit(1);
+                e_errcode = ERR_CONST_REASSIGNMENT;
+                e_errline = 0;
+            
+                return false;
             }
 
             var->value = e_evaluate(arena, assignment.init, scope);
 
-            return;
+            return true;
         }
 
         current_var = current_var->next;
     }
+
+    return false;
 }
 
 eValue e_get_value(eString identifier, eScope *scope)
@@ -243,5 +267,5 @@ eValue e_get_value(eString identifier, eScope *scope)
         current = current->next;
     }
 
-    return (eValue) {.type = VT_INVALID};
+    return (eValue) {.type = VT_ERROR};
 }
