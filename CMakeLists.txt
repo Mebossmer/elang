@@ -8,7 +8,6 @@ add_executable(elang
     "src/eparse.c"
     "src/elist.c"
     "src/einterpreter.c"
-    "src/eerror.c"
     "src/ebuiltin.c"
     "src/earena.c"
     "src/estring.c"

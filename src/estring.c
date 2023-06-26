@@ -1,5 +1,6 @@
 #include "estring.h"
 #include <string.h>
+#include <stdio.h>
 
 eString e_string_new(eArena *arena, const char *text)
 {
@@ -45,4 +46,12 @@ bool e_string_compare(eString a, eString b)
     }
 
     return true;
+}
+
+void e_string_print(eString msg)
+{
+    for(size_t i = 0; i < msg.len; i++)
+    {
+        putc(msg.ptr[i], stdout);
+    }
 }

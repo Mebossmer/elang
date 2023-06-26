@@ -27,6 +27,15 @@ typedef enum
 
 typedef enum
 {
+    VT_INT,
+    VT_STRING,
+    VT_BOOL,
+
+    VT_INVALID
+} eValueType;
+
+typedef enum
+{
     OP_ADD,
     OP_SUB,
     OP_MUL,
@@ -106,6 +115,7 @@ typedef struct
     eString identifier;
 
     eASTNode *init;
+    eValueType value_type;
 
     eAssignmentType type;
 } eASTDeclaration;
@@ -121,7 +131,7 @@ typedef struct
 {
     eString identifier;
 
-    eListNode *params; // eString (identifier)
+    eListNode *params; // eFunctionParam
     eListNode *body; // eASTNode *
 } eASTFunctionDecl;
 
@@ -131,6 +141,12 @@ typedef struct
 
     eListNode *arguments; // eASTNode *
 } eASTFunctionCall;
+
+typedef struct
+{
+    eString identifier;
+    eValueType value_type;
+} eASTFunctionParam;
 
 struct eastnode
 {

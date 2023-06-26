@@ -5,16 +5,6 @@
 
 typedef struct escope eScope;
 
-typedef enum
-{
-    VT_INT,
-    VT_STRING,
-    VT_BOOL,
-
-    VT_INVALID,
-    VT_ERROR
-} eValueType;
-
 typedef struct
 {
     eValueType type;
@@ -34,6 +24,7 @@ typedef struct
     eString identifier;
 
     eValue value;
+    eValueType value_type;
 
     eAssignmentType type;
 } eVariable;
@@ -58,10 +49,10 @@ void e_evaluate_body(eArena *arena, eListNode *body, eScope *scope);
 
 eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope);
 
-bool e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);
+void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);
 
-bool e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope);
+void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope);
 
-bool e_assign(eArena *arena, eASTAssignment assignment, eScope *scope);
+void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope);
 
 eValue e_get_value(eString identifier, eScope *scope);

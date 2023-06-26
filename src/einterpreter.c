@@ -36,6 +36,63 @@ void e_scope_free(eScope *scope)
     e_arena_free(&scope->allocator);
 }
 
+static bool is_equal(eValue a, eValue b)
+{
+    if(a.type != b.type)
+    {
+        THROW_ERROR(RUNTIME_ERROR, "cannot compare two values of different types", 0l);
+    }
+
+    switch(a.type)
+    {
+    case VT_INT:
+        return a.integer == b.integer;
+
+    case VT_BOOL:
+        return a.boolean == b.boolean;
+
+    case VT_STRING:
+        return e_string_compare(a.string, b.string);
+
+    default:
+        THROW_ERROR(RUNTIME_ERROR, "invalid comparison", 0l);
+    }
+}
+
+static bool is_less(eValue a, eValue b)
+{
+    if(a.type != b.type)
+    {
+        THROW_ERROR(RUNTIME_ERROR, "cannot compare two values of different types", 0l);
+    }
+
+    switch(a.type)
+    {
+    case VT_INT:
+        return a.integer < b.integer;
+
+    default:
+        THROW_ERROR(RUNTIME_ERROR, "invalid comparison", 0l);
+    }
+}
+
+static bool is_greater(eValue a, eValue b)
+{
+    if(a.type != b.type)
+    {
+        THROW_ERROR(RUNTIME_ERROR, "cannot compare two values of different types", 0l);
+    }
+
+    switch(a.type)
+    {
+    case VT_INT:
+        return a.integer > b.integer;
+
+    default:
+        THROW_ERROR(RUNTIME_ERROR, "invalid comparison", 0l);
+    }
+}
+
 eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
 {
     switch(node->tag)
@@ -56,13 +113,6 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
 
     case AST_IDENTIFIER: {
         eValue value = e_get_value(node->identifier, scope);
-        if(value.type == VT_ERROR)
-        {
-            e_errcode = ERR_UNKNOWN_IDENTIFIER;
-            e_errline = 0; // TODO
-
-            return (eValue) {.type = VT_ERROR};
-        }
 
         return value;
     }
@@ -109,19 +159,13 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_DECLARATION: {
-        if(!e_declare(arena, node->declaration, scope))
-        {
-            return (eValue) {.type = VT_ERROR};
-        }
+        e_declare(arena, node->declaration, scope);
 
         return (eValue) {.type = VT_INVALID};
     }
 
     case AST_ASSIGNMENT: {
-        if(!e_assign(arena, node->assignment, scope))
-        {
-            return (eValue) {.type = VT_ERROR};
-        }
+        e_assign(arena, node->assignment, scope);
 
         return (eValue) {.type = VT_INVALID};
     }
@@ -179,19 +223,19 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
         case BOP_IS_EQUAL:
             return (eValue) {
                 .type = VT_BOOL,
-                .boolean = lhs.integer == rhs.integer // TODO: very bad
+                .boolean = is_equal(lhs, rhs)
             };
 
         case BOP_IS_LESS:
             return (eValue) {
                 .type = VT_BOOL,
-                .boolean = lhs.integer < rhs.integer // TODO: also very bad
+                .boolean = is_less(lhs, rhs)
             };
 
         case BOP_IS_GREATER:
             return (eValue) {
                 .type = VT_BOOL,
-                .boolean = lhs.integer > rhs.integer // TODO: pathetic
+                .boolean = is_greater(lhs, rhs)
             };
 
         default:
@@ -259,43 +303,27 @@ static FunctionMap get_builtin_function(eString identifier)
 
 eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 {
-    /*
-    eListNode *current = scope->functions;
-    while(current != NULL)
-    {
-        eASTFunctionDecl *decl = (eASTFunctionDecl *) current->data;
-        if(e_string_compare(decl->identifier, call.identifier))
-        {
-            // Create new scope and execute function
-
-            eScope function_scope = e_scope_new(scope);
-
-            e_evaluate_body(arena, decl->body, scope);
-
-            e_scope_free(&function_scope);
-
-            return (eValue) {.type = VT_INVALID};
-        }
-
-        current = current->next;
-    }
-    */
-
     eASTFunctionDecl *function = get_function(call.identifier, scope);
     if(function != NULL)
     {
+        if(e_list_len(call.arguments) != e_list_len(function->params))
+        {
+            THROW_ERROR(RUNTIME_ERROR, "wrong amount of arguments provided", 0l);
+        }
+
         eScope function_scope = e_scope_new(scope);
 
         eListNode *current_arg = call.arguments;
         eListNode *current_param = function->params;
         while(current_arg != NULL)
         {
-            eString *identifier = (eString *) current_param->data;
+            eASTFunctionParam *param = (eASTFunctionParam *) current_param->data;
 
             e_declare(&function_scope.allocator, (eASTDeclaration) {
-                .identifier = *identifier,
+                .identifier = param->identifier,
                 .init = (eASTNode *) current_arg->data,
-                .type = AT_VAR // TODO
+                .type = AT_VAR,
+                .value_type = param->value_type
             }, &function_scope);
 
             current_arg = current_arg->next;
@@ -309,45 +337,21 @@ eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
         return (eValue) {.type = VT_INVALID};
     }
 
-    /*
-    for(size_t i = 0; i < sizeof(builtin_functions) / sizeof(FunctionMap); i++)
-    {
-        if(e_string_compare(call.identifier, builtin_functions[i].identifier))
-        {
-            if(e_list_len(call.arguments) != builtin_functions[i].num_arguments)
-            {
-                e_errcode = ERR_ARGUMENT_COUNT;
-                e_errline = 0; // TODO
-
-                return (eValue) {.type = VT_ERROR};
-            }
-
-            return builtin_functions[i].func(arena, scope, call.arguments);
-        }
-    }
-    */
-
     FunctionMap built_in = get_builtin_function(call.identifier);
     if(built_in.func != NULL)
     {
         if(e_list_len(call.arguments) != built_in.num_arguments)
         {
-            e_errcode = ERR_ARGUMENT_COUNT;
-            e_errline = 0; // TODO
-
-            return (eValue) {.type = VT_ERROR};
+            THROW_ERROR(RUNTIME_ERROR, "invalid amount of arguments", 0l);
         }
 
         return built_in.func(arena, scope, call.arguments);
     }
 
-    e_errcode = ERR_UNKNOWN_IDENTIFIER;
-    e_errline = 0; // TODO
-
-    return (eValue) {.type = VT_ERROR};
+    THROW_ERROR(RUNTIME_ERROR, "unknown identifier", 0l);
 }
 
-bool e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
+void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
 {
     eScope *current_scope = scope;
     while(current_scope != NULL)
@@ -358,10 +362,7 @@ bool e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
             eVariable *var = (eVariable *) current->data;
             if(e_string_compare(var->identifier, declaration.identifier))
             {
-                e_errcode = ERR_NAME_CONFLICT;
-                e_errline = 0; // TODO
-
-                return false;
+                THROW_ERROR(RUNTIME_ERROR, "name conflict", 0l);
             }
         
             current = current->next;
@@ -371,21 +372,21 @@ bool e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
     }
 
     eValue value = e_evaluate(arena, declaration.init, scope);
-    if(value.type == VT_ERROR)
+
+    if(value.type != declaration.value_type && declaration.value_type != VT_INVALID)
     {
-        return false;
+        THROW_ERROR(RUNTIME_ERROR, "type conflict", 0l);
     }
 
     e_list_push(arena, &scope->variables, &(eVariable) {
         .identifier = declaration.identifier,
         .value = value,
-        .type = declaration.type
+        .type = declaration.type,
+        .value_type = value.type
     }, sizeof(eVariable));
-
-    return true;
 }
 
-bool e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope)
+void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope)
 {
     eScope *current_scope = scope;
     while(current_scope != NULL)
@@ -396,10 +397,7 @@ bool e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *sco
             eASTFunctionDecl *decl = (eASTFunctionDecl *) current->data;
             if(e_string_compare(decl->identifier, declaration.identifier))
             {
-                e_errcode = ERR_NAME_CONFLICT;
-                e_errline = 0; // TODO
-
-                return false;
+                THROW_ERROR(RUNTIME_ERROR, "name conflict", 0l);
             }
 
             current = current->next;
@@ -409,11 +407,9 @@ bool e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *sco
     }
 
     e_list_push(arena, &scope->functions, &declaration, sizeof(eASTFunctionDecl));
-
-    return true;
 }
 
-bool e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
+void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
 {
     eScope *current_scope = scope;
     while(current_scope != NULL)
@@ -426,15 +422,19 @@ bool e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
             {
                 if(var->type == AT_CONST)
                 {
-                    e_errcode = ERR_CONST_REASSIGNMENT;
-                    e_errline = 0;
-                
-                    return false;
+                    THROW_ERROR(RUNTIME_ERROR, "cannot reassign a constant", 0l);
                 }
 
-                var->value = e_evaluate(arena, assignment.init, scope);
+                eValue new_value = e_evaluate(arena, assignment.init, scope);
 
-                return true;
+                if(new_value.type != var->value_type)
+                {
+                    THROW_ERROR(RUNTIME_ERROR, "cannot assign a variable a value of different type", 0l);
+                }
+
+                var->value = new_value;
+
+                return;
             }
 
             current_var = current_var->next;
@@ -443,7 +443,7 @@ bool e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
         current_scope = current_scope->parent;
     }
 
-    return false;
+    THROW_ERROR(RUNTIME_ERROR, "unknown identifier", 0l);
 }
 
 eValue e_get_value(eString identifier, eScope *scope)
@@ -466,5 +466,5 @@ eValue e_get_value(eString identifier, eScope *scope)
         current_scope = current_scope->parent;
     }
 
-    return (eValue) {.type = VT_ERROR};
+    THROW_ERROR(RUNTIME_ERROR, "unknown identifier", 0l);
 }

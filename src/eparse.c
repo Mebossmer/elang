@@ -74,17 +74,15 @@ static bool accept(eParser *self, eTokenTag tag)
     return false;
 }
 
-static bool expect(eParser *self, eTokenTag tag)
+static void expect(eParser *self, eTokenTag tag)
 {
     if(accept(self, tag))
     {
-        return true;
+        return;
     }
 
-    e_errcode = ERR_UNEXPECTED_TOKEN;
-    e_errline = E_LIST_AT(self->tokens, self->index, eToken *)->line;
-
-    return false;
+    eToken *tk = E_LIST_AT(self->tokens, self->index, eToken *);
+    THROW_ERROR(PARSER_ERROR, "unexpected token", tk->line);
 }
 
 eASTNode *e_parse_factor(eArena *arena, eParser *self)
@@ -138,16 +136,12 @@ eASTNode *e_parse_factor(eArena *arena, eParser *self)
     {
         eASTNode *node = e_parse_expression(arena, self);
 
-        if(!expect(self, ETK_R_PAREN))
-        {
-            return NULL;
-        }
+        expect(self, ETK_R_PAREN);
 
         return node;
     }
     
-    e_errcode = ERR_SYNTAX;
-    e_errline = tk->line;
+    THROW_ERROR(PARSER_ERROR, "syntax error", tk->line);
 
     return NULL;
 }
@@ -229,11 +223,6 @@ static eCondition get_conditional_operator(eTokenTag tag)
     {
     case ETK_KEYWORD_AND:
         return BOP_AND;
-
-    /*
-    case ETK_EXCLAMATION:
-        return BOP_NOT;
-    */
     
     case ETK_KEYWORD_OR:
         return BOP_OR;
@@ -258,10 +247,7 @@ eASTNode *e_parse_conditional_factor(eArena *arena, eParser *self)
     {
         eASTNode *node = e_parse_condition(arena, self);
 
-        if(!expect(self, ETK_R_PAREN))
-        {
-            return NULL; // TODO: this is terrible
-        }
+        expect(self, ETK_R_PAREN);
 
         return node;
     }
@@ -335,37 +321,6 @@ eASTNode *e_parse_condition(eArena *arena, eParser *self)
     return lhs;
 }
 
-/*
-eASTNode *e_parse_condition(eArena *arena, eParser *self)
-{
-    eASTNode *lhs = e_parse_expression(arena, self);
-
-    eToken *tk = E_LIST_AT(self->tokens, self->index, eToken *);
-
-    eCondition op = get_conditional_operator(tk->tag);
-    if(op == BOP_INVALID)
-    {
-        e_errcode = ERR_INVALID_BOOL_OPERATOR;
-        e_errline = tk->line;
-
-        return NULL;
-    }
-
-    self->index++;
-
-    eASTNode *rhs = e_parse_expression(arena, self);
-
-    return e_ast_alloc(arena, (eASTNode) {
-        .tag = AST_CONDITION,
-        .condition = (eASTCondition) {
-            .lhs = lhs,
-            .rhs = rhs,
-            .op = op
-        }
-    });
-}
-*/
-
 static eAssignmentType get_assignment_type(eTokenTag tag)
 {
     switch(tag)
@@ -378,6 +333,24 @@ static eAssignmentType get_assignment_type(eTokenTag tag)
 
     default:
         return AT_INVALID;
+    }
+}
+
+static eValueType get_value_type(eTokenTag tag)
+{
+    switch(tag)
+    {
+    case ETK_KEYWORD_TYPE_STRING:
+        return VT_STRING;
+    
+    case ETK_KEYWORD_TYPE_INT:
+        return VT_INT;
+
+    case ETK_KEYWORD_TYPE_BOOL:
+        return VT_BOOL;
+
+    default:
+        return VT_INVALID;
     }
 }
 
@@ -397,27 +370,36 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
 
         eToken *identifier = E_LIST_AT(self->tokens, self->index, eToken *);
 
-        if(!expect(self, ETK_IDENTIFIER))
+        expect(self, ETK_IDENTIFIER);
+
+        eValueType value_type = VT_INVALID;
+        if(accept(self, ETK_DOUBLE_COLON))
         {
-            return NULL;
+            eToken *type_tk = E_LIST_AT(self->tokens, self->index, eToken *);
+
+            self->index++;
+
+            value_type = get_value_type(type_tk->tag);
+            if(value_type == VT_INVALID)
+            {
+                THROW_ERROR(PARSER_ERROR, "invalid type name", type_tk->line);
+            }
         }
-        if(!expect(self, ETK_EQUALS))
-        {
-            return NULL;
-        }
+
+        expect(self, ETK_EQUALS);
 
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_DECLARATION,
             .declaration = (eASTDeclaration) {
                 .type = get_assignment_type(tk->tag),
                 .init = e_parse_expression(arena, self),
-                .identifier = e_string_slice(self->src, identifier->start, identifier->len)
+                .identifier = e_string_slice(self->src, identifier->start, identifier->len),
+                .value_type = value_type
             }
         });
     }
     else if(accept(self, ETK_IDENTIFIER))
     {
-        // Variable assignment
         if(accept(self, ETK_L_PAREN))
         {
             eListNode *arguments = NULL;
@@ -430,10 +412,7 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
                     e_list_push(arena, &arguments, node, sizeof(eASTNode));
                 } while(accept(self, ETK_COMMA));
 
-                if(!expect(self, ETK_R_PAREN))
-                {
-                    return NULL;
-                }
+                expect(self, ETK_R_PAREN);
             }
 
             return e_ast_alloc(arena, (eASTNode) {
@@ -505,15 +484,8 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
     {
         eToken *id = E_LIST_AT(self->tokens, self->index, eToken *);
 
-        if(!expect(self, ETK_IDENTIFIER))
-        {
-            return NULL;
-        }
-
-        if(!expect(self, ETK_L_PAREN))
-        {
-            return NULL;
-        }
+        expect(self, ETK_IDENTIFIER);
+        expect(self, ETK_L_PAREN);
 
         eListNode *params = NULL;
 
@@ -525,16 +497,27 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
 
                 self->index++;
 
-                eString param = e_string_slice(self->src, param_tk->start, param_tk->len);
+                eString param_ident = e_string_slice(self->src, param_tk->start, param_tk->len);
 
-                e_list_push(arena, &params, &param, sizeof(eString));
+                expect(self, ETK_DOUBLE_COLON);
+
+                eToken *param_type = E_LIST_AT(self->tokens, self->index, eToken *);
+                eValueType value_type = get_value_type(param_type->tag);
+                if(value_type == VT_INVALID)
+                {
+                    THROW_ERROR(RUNTIME_ERROR, "invalid type", 0l);
+                }
+
+                self->index++;
+
+                e_list_push(arena, &params, &(eASTFunctionParam) {
+                    .identifier = param_ident,
+                    .value_type = value_type
+                }, sizeof(eASTFunctionParam));
             } while(accept(self, ETK_COMMA));
         }
 
-        if(!expect(self, ETK_R_PAREN))
-        {
-            return NULL;
-        }
+        expect(self, ETK_R_PAREN);
 
         eListNode *body = e_parse_body(arena, self);
         if(!body)
@@ -558,18 +541,14 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
         });
     }
 
-    e_errline = tk->line;
-    e_errcode = ERR_UNKNOWN_STATEMENT;
+    THROW_ERROR(PARSER_ERROR, "unknown statement", tk->line);
 
     return NULL;
 }
 
 eListNode *e_parse_body(eArena *arena, eParser *self)
 {
-    if(!expect(self, ETK_L_CURLY_BRACE))
-    {
-        return NULL;
-    }
+    expect(self, ETK_L_CURLY_BRACE);
 
     eListNode *stmts = NULL;
 

@@ -56,48 +56,16 @@ int main(int argc, char **argv)
     eScope global = e_scope_new(NULL);
 
     eListNode *tokens = e_lex(&arena, txt);
-    eListNode *current = tokens;
-    while(current != NULL)
-    {
-        eToken *tk = (eToken *) current->data;
-        if(tk->tag == ETK_UNKNOWN)
-        {
-            fprintf(stderr, "Lexer error in line %ld: %s\n", e_get_error_line(), e_get_error());
-
-            return -2;
-        }
-
-        current = current->next;
-    }
 
     eParser parser = e_parser_new(&arena, tokens, txt);
 
     eASTNode *expr = e_parse_statement(&arena, &parser);
-    if(expr == NULL)
-    {
-        fprintf(stderr, "Parser error in line %ld: %s\n", e_get_error_line(), e_get_error());
-
-        return -3;
-    }
 
     while(expr->tag != AST_EOF)
     {
         eValue value = e_evaluate(&global.allocator, expr, &global);
-        if(value.type == VT_ERROR)
-        {
-            fprintf(stderr, "Runtime error: %s\n", e_get_error());
-
-            return -4;
-        }
 
         expr = e_parse_statement(&arena, &parser);
-
-        if(expr == NULL)
-        {
-            fprintf(stderr, "Parser error in line %ld: %s\n", e_get_error_line(), e_get_error());
-
-            return -3;
-        }
     }
 
     e_scope_free(&global);
