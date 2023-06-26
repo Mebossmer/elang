@@ -21,6 +21,21 @@ static FunctionMap builtin_functions[] = {
     {.identifier = {.ptr = "exit", .len = 4}, .func = __e_exit, .num_arguments = 1}
 };
 
+eScope e_scope_new(eScope *parent)
+{
+    return (eScope) {
+        .allocator = e_arena_new(2048),
+        .parent = parent,
+        .functions = NULL,
+        .variables = NULL
+    };
+}
+
+void e_scope_free(eScope *scope)
+{
+    e_arena_free(&scope->allocator);
+}
+
 eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
 {
     switch(node->tag)
@@ -184,6 +199,11 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
         }
     }
 
+    case AST_FUNCTION_DECL:
+        e_declare_function(arena, node->function_decl, scope);
+
+        return (eValue) {.type = VT_INVALID};
+
     default: {
         return (eValue) {.type = VT_INVALID};
     }
@@ -201,8 +221,95 @@ void e_evaluate_body(eArena *arena, eListNode *body, eScope *scope)
     }
 }
 
+static eASTFunctionDecl *get_function(eString identifier, eScope *scope)
+{
+    eScope *current = scope;
+    while(current != NULL)
+    {
+        eListNode *current_function = current->functions;
+        while(current_function != NULL)
+        {
+            eASTFunctionDecl *function = (eASTFunctionDecl *) current_function->data;
+            if(e_string_compare(function->identifier, identifier))
+            {
+                return function;
+            }
+
+            current_function = current_function->next;
+        }
+
+        current = current->parent;
+    }
+
+    return NULL;
+}
+
+static FunctionMap get_builtin_function(eString identifier)
+{
+    for(size_t i = 0; i < sizeof(builtin_functions) / sizeof(FunctionMap); i++)
+    {
+        if(e_string_compare(identifier, builtin_functions[i].identifier))
+        {
+            return builtin_functions[i];
+        }
+    }
+
+    return (FunctionMap) {.func = NULL, .identifier = {0}, .num_arguments = 0};
+}
+
 eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 {
+    /*
+    eListNode *current = scope->functions;
+    while(current != NULL)
+    {
+        eASTFunctionDecl *decl = (eASTFunctionDecl *) current->data;
+        if(e_string_compare(decl->identifier, call.identifier))
+        {
+            // Create new scope and execute function
+
+            eScope function_scope = e_scope_new(scope);
+
+            e_evaluate_body(arena, decl->body, scope);
+
+            e_scope_free(&function_scope);
+
+            return (eValue) {.type = VT_INVALID};
+        }
+
+        current = current->next;
+    }
+    */
+
+    eASTFunctionDecl *function = get_function(call.identifier, scope);
+    if(function != NULL)
+    {
+        eScope function_scope = e_scope_new(scope);
+
+        eListNode *current_arg = call.arguments;
+        eListNode *current_param = function->params;
+        while(current_arg != NULL)
+        {
+            eString *identifier = (eString *) current_param->data;
+
+            e_declare(&function_scope.allocator, (eASTDeclaration) {
+                .identifier = *identifier,
+                .init = (eASTNode *) current_arg->data,
+                .type = AT_VAR // TODO
+            }, &function_scope);
+
+            current_arg = current_arg->next;
+            current_param = current_param->next;
+        }
+
+        e_evaluate_body(arena, function->body, &function_scope);
+
+        e_scope_free(&function_scope);
+
+        return (eValue) {.type = VT_INVALID};
+    }
+
+    /*
     for(size_t i = 0; i < sizeof(builtin_functions) / sizeof(FunctionMap); i++)
     {
         if(e_string_compare(call.identifier, builtin_functions[i].identifier))
@@ -218,6 +325,21 @@ eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
             return builtin_functions[i].func(arena, scope, call.arguments);
         }
     }
+    */
+
+    FunctionMap built_in = get_builtin_function(call.identifier);
+    if(built_in.func != NULL)
+    {
+        if(e_list_len(call.arguments) != built_in.num_arguments)
+        {
+            e_errcode = ERR_ARGUMENT_COUNT;
+            e_errline = 0; // TODO
+
+            return (eValue) {.type = VT_ERROR};
+        }
+
+        return built_in.func(arena, scope, call.arguments);
+    }
 
     e_errcode = ERR_UNKNOWN_IDENTIFIER;
     e_errline = 0; // TODO
@@ -227,19 +349,25 @@ eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 
 bool e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
 {
-    eListNode *current = scope->variables;
-    while(current != NULL)
+    eScope *current_scope = scope;
+    while(current_scope != NULL)
     {
-        eVariable *var = (eVariable *) current->data;
-        if(e_string_compare(var->identifier, declaration.identifier))
+        eListNode *current = current_scope->variables;
+        while(current != NULL)
         {
-            e_errcode = ERR_NAME_CONFLICT;
-            e_errline = 0; // TODO
+            eVariable *var = (eVariable *) current->data;
+            if(e_string_compare(var->identifier, declaration.identifier))
+            {
+                e_errcode = ERR_NAME_CONFLICT;
+                e_errline = 0; // TODO
 
-            return false;
+                return false;
+            }
+        
+            current = current->next;
         }
-    
-        current = current->next;
+
+        current_scope = current_scope->parent;
     }
 
     eValue value = e_evaluate(arena, declaration.init, scope);
@@ -257,28 +385,62 @@ bool e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
     return true;
 }
 
-bool e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
+bool e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope)
 {
-    eListNode *current_var = scope->variables;
-    while(current_var != NULL)
+    eScope *current_scope = scope;
+    while(current_scope != NULL)
     {
-        eVariable *var = (eVariable *) current_var->data;
-        if(e_string_compare(var->identifier, assignment.identifier))
+        eListNode *current = scope->functions;
+        while(current != NULL)
         {
-            if(var->type == AT_CONST)
+            eASTFunctionDecl *decl = (eASTFunctionDecl *) current->data;
+            if(e_string_compare(decl->identifier, declaration.identifier))
             {
-                e_errcode = ERR_CONST_REASSIGNMENT;
-                e_errline = 0;
-            
+                e_errcode = ERR_NAME_CONFLICT;
+                e_errline = 0; // TODO
+
                 return false;
             }
 
-            var->value = e_evaluate(arena, assignment.init, scope);
-
-            return true;
+            current = current->next;
         }
 
-        current_var = current_var->next;
+        current_scope = current_scope->parent;
+    }
+
+    e_list_push(arena, &scope->functions, &declaration, sizeof(eASTFunctionDecl));
+
+    return true;
+}
+
+bool e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
+{
+    eScope *current_scope = scope;
+    while(current_scope != NULL)
+    {
+        eListNode *current_var = current_scope->variables;
+        while(current_var != NULL)
+        {
+            eVariable *var = (eVariable *) current_var->data;
+            if(e_string_compare(var->identifier, assignment.identifier))
+            {
+                if(var->type == AT_CONST)
+                {
+                    e_errcode = ERR_CONST_REASSIGNMENT;
+                    e_errline = 0;
+                
+                    return false;
+                }
+
+                var->value = e_evaluate(arena, assignment.init, scope);
+
+                return true;
+            }
+
+            current_var = current_var->next;
+        }
+
+        current_scope = current_scope->parent;
     }
 
     return false;
@@ -286,16 +448,22 @@ bool e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
 
 eValue e_get_value(eString identifier, eScope *scope)
 {
-    eListNode *current = scope->variables;
-    while(current != NULL)
+    eScope *current_scope = scope;
+    while(current_scope != NULL)
     {
-        eVariable *var = (eVariable *) current->data;
-        if(e_string_compare(var->identifier, identifier))
+        eListNode *current = current_scope->variables;
+        while(current != NULL)
         {
-            return var->value;
+            eVariable *var = (eVariable *) current->data;
+            if(e_string_compare(var->identifier, identifier))
+            {
+                return var->value;
+            }
+
+            current = current->next;
         }
 
-        current = current->next;
+        current_scope = current_scope->parent;
     }
 
     return (eValue) {.type = VT_ERROR};

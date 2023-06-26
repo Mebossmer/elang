@@ -33,7 +33,8 @@ static KeywordMap keywords[] = {
     {.text = {.ptr = "if", .len = 2}, .tag = ETK_KEYWORD_IF},
     {.text = {.ptr = "while", .len = 5}, .tag = ETK_KEYWORD_WHILE},
     {.text = {.ptr = "and", .len = 3}, .tag = ETK_KEYWORD_AND},
-    {.text = {.ptr = "or", .len = 2}, .tag = ETK_KEYWORD_OR}
+    {.text = {.ptr = "or", .len = 2}, .tag = ETK_KEYWORD_OR},
+    {.text = {.ptr = "fun", .len = 3}, .tag = ETK_KEYWORD_FUN}
 };
 
 static SpecialMap special[] = {

@@ -421,16 +421,19 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
         if(accept(self, ETK_L_PAREN))
         {
             eListNode *arguments = NULL;
-            do
+            if(!accept(self, ETK_R_PAREN))
             {
-                eASTNode *node = e_parse_expression(arena, self);
+                do
+                {
+                    eASTNode *node = e_parse_expression(arena, self);
 
-                e_list_push(arena, &arguments, node, sizeof(eASTNode));
-            } while(accept(self, ETK_COMMA));
+                    e_list_push(arena, &arguments, node, sizeof(eASTNode));
+                } while(accept(self, ETK_COMMA));
 
-            if(!expect(self, ETK_R_PAREN))
-            {
-                return NULL;
+                if(!expect(self, ETK_R_PAREN))
+                {
+                    return NULL;
+                }
             }
 
             return e_ast_alloc(arena, (eASTNode) {
@@ -498,6 +501,56 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
             }
         });
     }
+    else if(accept(self, ETK_KEYWORD_FUN))
+    {
+        eToken *id = E_LIST_AT(self->tokens, self->index, eToken *);
+
+        if(!expect(self, ETK_IDENTIFIER))
+        {
+            return NULL;
+        }
+
+        if(!expect(self, ETK_L_PAREN))
+        {
+            return NULL;
+        }
+
+        eListNode *params = NULL;
+
+        if(E_LIST_AT(self->tokens, self->index, eToken *)->tag == ETK_IDENTIFIER)
+        {
+            do
+            {
+                eToken *param_tk = E_LIST_AT(self->tokens, self->index, eToken *);
+
+                self->index++;
+
+                eString param = e_string_slice(self->src, param_tk->start, param_tk->len);
+
+                e_list_push(arena, &params, &param, sizeof(eString));
+            } while(accept(self, ETK_COMMA));
+        }
+
+        if(!expect(self, ETK_R_PAREN))
+        {
+            return NULL;
+        }
+
+        eListNode *body = e_parse_body(arena, self);
+        if(!body)
+        {
+            return NULL;
+        }
+
+        return e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_FUNCTION_DECL,
+            .function_decl = (eASTFunctionDecl) {
+                .identifier = e_string_slice(self->src, id->start, id->len),
+                .params = params,
+                .body = body
+            }
+        });
+    }
     else if(accept(self, ETK_EOF))
     {
         return e_ast_alloc(arena, (eASTNode) {
@@ -520,22 +573,21 @@ eListNode *e_parse_body(eArena *arena, eParser *self)
 
     eListNode *stmts = NULL;
 
-    eArena scratch = e_arena_new(2048);
-
     do
     {
-        eASTNode *stmt = e_parse_statement(&scratch, self);
+        eASTNode *stmt = e_parse_statement(arena, self);
+        if(stmt == NULL)
+        {
+            return NULL;
+        }
+
         if(stmt->tag == AST_EOF)
         {
-            e_arena_free(&scratch);
-
             return NULL;
         }
 
         e_list_push(arena, &stmts, stmt, sizeof(eASTNode));
     } while(!accept(self, ETK_R_CURLY_BRACE));
-
-    e_arena_free(&scratch);
 
     return stmts;
 }

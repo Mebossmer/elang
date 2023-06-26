@@ -53,9 +53,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    eScope global = {
-        .variables = NULL
-    };
+    eScope global = e_scope_new(NULL);
 
     eListNode *tokens = e_lex(&arena, txt);
     eListNode *current = tokens;
@@ -84,7 +82,7 @@ int main(int argc, char **argv)
 
     while(expr->tag != AST_EOF)
     {
-        eValue value = e_evaluate(&arena, expr, &global);
+        eValue value = e_evaluate(&global.allocator, expr, &global);
         if(value.type == VT_ERROR)
         {
             fprintf(stderr, "Runtime error: %s\n", e_get_error());
@@ -102,6 +100,7 @@ int main(int argc, char **argv)
         }
     }
 
+    e_scope_free(&global);
     e_arena_free(&arena);
 
     return 0;

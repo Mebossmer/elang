@@ -1,3 +1,10 @@
+fun printHello(text, a)
+{
+    print("Hello from inside the function")
+    print(text)
+    print(a)
+}
+
 var foo = 34 * (6 + 23)
 foo = 44
 
@@ -22,6 +29,7 @@ var i = 0
 while i < 4
 {
     print(i)
+    printHello("Hello World", 420)
 
     i = i + 1
 }

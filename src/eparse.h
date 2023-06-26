@@ -16,6 +16,7 @@ typedef enum
 
     AST_ARITHMETIC,
     AST_CONDITION,
+    AST_FUNCTION_DECL,
     AST_FUNCTION_CALL,
 
     AST_DECLARATION,
@@ -120,7 +121,15 @@ typedef struct
 {
     eString identifier;
 
-    eListNode *arguments;
+    eListNode *params; // eString (identifier)
+    eListNode *body; // eASTNode *
+} eASTFunctionDecl;
+
+typedef struct
+{
+    eString identifier;
+
+    eListNode *arguments; // eASTNode *
 } eASTFunctionCall;
 
 struct eastnode
@@ -150,6 +159,8 @@ struct eastnode
         eASTIfStatement if_statement;
 
         eASTWhileLoop while_loop;
+
+        eASTFunctionDecl function_decl;
     };
 };
 
