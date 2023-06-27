@@ -12,24 +12,24 @@ static void println(eString string)
     putc('\n', stdout);
 }
 
-eValue __e_print(eArena *arena, eScope *scope, eListNode *arguments)
+eResult __e_print(eArena *arena, eScope *scope, eListNode *arguments)
 {
-    eValue value = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
+    eResult result = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
 
-    switch(value.type)
+    switch(result.value.type)
     {
     case VT_INT:
-        printf("%d\n", value.integer);
+        printf("%d\n", result.value.integer);
 
         break;
 
     case VT_STRING:
-        println(value.string);
+        println(result.value.string);
 
         break;
 
     case VT_BOOL:
-        switch(value.boolean)
+        switch(result.value.boolean)
         {
         case true:
             printf("true\n");
@@ -43,12 +43,12 @@ eValue __e_print(eArena *arena, eScope *scope, eListNode *arguments)
         }
     }
 
-    return (eValue) {.type = VT_INVALID};
+    return (eResult) {.value = {0}, .is_void = true};
 }
 
-eValue __e_exit(eArena *arena, eScope *scope, eListNode *arguments)
+eResult __e_exit(eArena *arena, eScope *scope, eListNode *arguments)
 {
-    eValue value = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
+    eResult result = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
 
-    exit(value.integer);
+    exit(result.value.integer);
 }

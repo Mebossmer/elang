@@ -21,6 +21,13 @@ typedef struct
 
 typedef struct
 {
+    eValue value;
+
+    bool is_void;
+} eResult;
+
+typedef struct
+{
     eString identifier;
 
     eValue value;
@@ -43,11 +50,11 @@ eScope e_scope_new(/* Nullable */ eScope *parent);
 
 void e_scope_free(eScope *scope);
 
-eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope);
+eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope);
 
-void e_evaluate_body(eArena *arena, eListNode *body, eScope *scope);
+eResult e_evaluate_body(eArena *arena, eListNode *body, eScope *scope);
 
-eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope);
+eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope);
 
 void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);
 

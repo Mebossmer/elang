@@ -63,7 +63,7 @@ int main(int argc, char **argv)
 
     while(expr->tag != AST_EOF)
     {
-        eValue value = e_evaluate(&global.allocator, expr, &global);
+        eResult value = e_evaluate(&global.allocator, expr, &global);
 
         expr = e_parse_statement(&arena, &parser);
     }

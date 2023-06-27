@@ -18,6 +18,7 @@ typedef enum
     AST_CONDITION,
     AST_FUNCTION_DECL,
     AST_FUNCTION_CALL,
+    AST_RETURN,
 
     AST_DECLARATION,
     AST_ASSIGNMENT,
@@ -31,7 +32,7 @@ typedef enum
     VT_STRING,
     VT_BOOL,
 
-    VT_INVALID
+    VT_VOID // Not defined
 } eValueType;
 
 typedef enum
@@ -60,9 +61,7 @@ typedef enum
 typedef enum
 {
     AT_CONST,
-    AT_VAR,
-
-    AT_INVALID
+    AT_VAR
 } eAssignmentType;
 
 typedef struct
@@ -130,6 +129,7 @@ typedef struct
 typedef struct
 {
     eString identifier;
+    eValueType return_type;
 
     eListNode *params; // eFunctionParam
     eListNode *body; // eASTNode *
@@ -147,6 +147,11 @@ typedef struct
     eString identifier;
     eValueType value_type;
 } eASTFunctionParam;
+
+typedef struct
+{
+    eASTNode *arg;
+} eASTReturn;
 
 struct eastnode
 {
@@ -177,6 +182,8 @@ struct eastnode
         eASTWhileLoop while_loop;
 
         eASTFunctionDecl function_decl;
+
+        eASTReturn return_stmt;
     };
 };
 

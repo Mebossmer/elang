@@ -109,6 +109,30 @@ eASTNode *e_parse_factor(eArena *arena, eParser *self)
     }
     else if(accept(self, ETK_IDENTIFIER))
     {
+        if(accept(self, ETK_L_PAREN))
+        {
+            eListNode *arguments = NULL;
+            if(!accept(self, ETK_R_PAREN))
+            {
+                do
+                {
+                    eASTNode *node = e_parse_expression(arena, self);
+
+                    e_list_push(arena, &arguments, node, sizeof(eASTNode));
+                } while(accept(self, ETK_COMMA));
+
+                expect(self, ETK_R_PAREN);
+            }
+
+            return e_ast_alloc(arena, (eASTNode) {
+                .tag = AST_FUNCTION_CALL,
+                .function_call = (eASTFunctionCall) {
+                    .identifier = e_string_slice(self->src, tk->start, tk->len),
+                    .arguments = arguments
+                }
+            });
+        }
+
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_IDENTIFIER,
             .identifier = e_string_slice(self->src, tk->start, tk->len)
@@ -321,7 +345,7 @@ eASTNode *e_parse_condition(eArena *arena, eParser *self)
     return lhs;
 }
 
-static eAssignmentType get_assignment_type(eTokenTag tag)
+static eAssignmentType get_assignment_type(eTokenTag tag, size_t line)
 {
     switch(tag)
     {
@@ -332,11 +356,11 @@ static eAssignmentType get_assignment_type(eTokenTag tag)
         return AT_CONST;
 
     default:
-        return AT_INVALID;
+        THROW_ERROR(PARSER_ERROR, "invalid assignment type", line)
     }
 }
 
-static eValueType get_value_type(eTokenTag tag)
+static eValueType get_value_type(eTokenTag tag, size_t line)
 {
     switch(tag)
     {
@@ -349,8 +373,11 @@ static eValueType get_value_type(eTokenTag tag)
     case ETK_KEYWORD_TYPE_BOOL:
         return VT_BOOL;
 
+    case ETK_KEYWORD_TYPE_VOID:
+        return VT_VOID;
+
     default:
-        return VT_INVALID;
+        THROW_ERROR(PARSER_ERROR, "invalid type name", line);
     }
 }
 
@@ -372,18 +399,25 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
 
         expect(self, ETK_IDENTIFIER);
 
-        eValueType value_type = VT_INVALID;
         if(accept(self, ETK_DOUBLE_COLON))
         {
             eToken *type_tk = E_LIST_AT(self->tokens, self->index, eToken *);
 
             self->index++;
 
-            value_type = get_value_type(type_tk->tag);
-            if(value_type == VT_INVALID)
-            {
-                THROW_ERROR(PARSER_ERROR, "invalid type name", type_tk->line);
-            }
+            eValueType value_type = get_value_type(type_tk->tag, 0l);
+        
+            expect(self, ETK_EQUALS);
+
+            return e_ast_alloc(arena, (eASTNode) {
+                .tag = AST_DECLARATION,
+                .declaration = (eASTDeclaration) {
+                    .type = get_assignment_type(tk->tag, 0l),
+                    .init = e_parse_expression(arena, self),
+                    .identifier = e_string_slice(self->src, identifier->start, identifier->len),
+                    .value_type = value_type
+                }
+            });
         }
 
         expect(self, ETK_EQUALS);
@@ -391,10 +425,10 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_DECLARATION,
             .declaration = (eASTDeclaration) {
-                .type = get_assignment_type(tk->tag),
+                .type = get_assignment_type(tk->tag, 0l),
                 .init = e_parse_expression(arena, self),
                 .identifier = e_string_slice(self->src, identifier->start, identifier->len),
-                .value_type = value_type
+                .value_type = VT_VOID
             }
         });
     }
@@ -502,11 +536,7 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
                 expect(self, ETK_DOUBLE_COLON);
 
                 eToken *param_type = E_LIST_AT(self->tokens, self->index, eToken *);
-                eValueType value_type = get_value_type(param_type->tag);
-                if(value_type == VT_INVALID)
-                {
-                    THROW_ERROR(RUNTIME_ERROR, "invalid type", 0l);
-                }
+                eValueType value_type = get_value_type(param_type->tag, 0l);
 
                 self->index++;
 
@@ -519,6 +549,15 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
 
         expect(self, ETK_R_PAREN);
 
+        eValueType return_type = VT_VOID;
+        if(accept(self, ETK_DOUBLE_COLON))
+        {
+            eToken *return_type_tk = E_LIST_AT(self->tokens, self->index, eToken *);
+            self->index++;
+
+            return_type = get_value_type(return_type_tk->tag, 0l);
+        }
+
         eListNode *body = e_parse_body(arena, self);
         if(!body)
         {
@@ -529,8 +568,18 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
             .tag = AST_FUNCTION_DECL,
             .function_decl = (eASTFunctionDecl) {
                 .identifier = e_string_slice(self->src, id->start, id->len),
+                .return_type = return_type,
                 .params = params,
                 .body = body
+            }
+        });
+    }
+    else if(accept(self, ETK_KEYWORD_RETURN))
+    {
+        return e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_RETURN,
+            .return_stmt = (eASTReturn) {
+                .arg = e_parse_expression(arena, self)
             }
         });
     }

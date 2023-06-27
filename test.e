@@ -1,12 +1,12 @@
-fun foobar(a: bool, b: bool)
+fun square(a: int): int
 {
-    if(a == false and b == true)
-    {
-        print("a is false and b is true")
-    }
+    return a * a
 }
 
-const foo: bool = false
-const bar = true
+fun sayHello()
+{
+    print("Hello World")
+}
 
-foobar(foo, bar)
+print(square(8))
+sayHello()

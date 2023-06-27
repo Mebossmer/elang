@@ -5,7 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-typedef eValue(* BuiltinFunction)(eArena *arena, eScope *scope, eListNode *arguments);
+typedef eResult(* BuiltinFunction)(eArena *arena, eScope *scope, eListNode *arguments);
 
 typedef struct
 {
@@ -93,81 +93,105 @@ static bool is_greater(eValue a, eValue b)
     }
 }
 
-eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
+eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
 {
     switch(node->tag)
     {
     case AST_NUMERIC_LITERAL: {
-        return (eValue) {
-            .type = VT_INT,
-            .integer = node->numeric_literal.value
+        return (eResult) {
+            .value = {
+                .type = VT_INT,
+                .integer = node->numeric_literal.value
+            },
+            .is_void = false
         };
     }
 
     case AST_STRING_LITERAL: {
-        return (eValue) {
-            .type = VT_STRING,
-            .string = node->string_literal.value
+        return (eResult) {
+            .value = {
+                .type = VT_STRING,
+                .string = node->string_literal.value
+            },
+            .is_void = false
         };
     }
 
     case AST_IDENTIFIER: {
         eValue value = e_get_value(node->identifier, scope);
 
-        return value;
+        return (eResult) {
+            .value = value,
+            .is_void = false
+        };
     }
 
     case AST_ARITHMETIC: {
-        eValue lhs = e_evaluate(arena, node->arithmetic.lhs, scope);
-        eValue rhs = e_evaluate(arena, node->arithmetic.rhs, scope);
+        eResult lhs = e_evaluate(arena, node->arithmetic.lhs, scope);
+        eResult rhs = e_evaluate(arena, node->arithmetic.rhs, scope);
 
         switch(node->arithmetic.op)
         {
         case OP_ADD:
-            return (eValue) {
-                .type = VT_INT,
-                .integer = lhs.integer + rhs.integer
+            return (eResult) {
+                .value = {
+                    .type = VT_INT,
+                    .integer = lhs.value.integer + rhs.value.integer
+                },
+                .is_void = false,
             };
 
         case OP_SUB:
-            return (eValue) {
-                .type = VT_INT,
-                .integer = lhs.integer - rhs.integer
+            return (eResult) {
+                .value = {
+                    .type = VT_INT,
+                    .integer = lhs.value.integer - rhs.value.integer
+                },
+                .is_void = false
             };
 
         case OP_MUL:
-            return (eValue) {
-                .type = VT_INT,
-                .integer = lhs.integer * rhs.integer
+            return (eResult) {
+                .value = {
+                    .type = VT_INT,
+                    .integer = lhs.value.integer * rhs.value.integer
+                },
+                .is_void = false
             };
 
         case OP_DIV:
-            return (eValue) {
-                .type = VT_INT,
-                .integer = lhs.integer / rhs.integer
+            return (eResult) {
+                .value = {
+                    .type = VT_INT,
+                    .integer = lhs.value.integer / rhs.value.integer
+                },
+                .is_void = false
             };
 
         case OP_MOD:
-            return (eValue) {
-                .type = VT_INT,
-                .integer = lhs.integer % rhs.integer
+            return (eResult) {
+                .value = {
+                    .type = VT_INT,
+                    .integer = lhs.value.integer % rhs.value.integer
+                },
+                .is_void = false
             };
 
         default:
-            return (eValue) {.type = VT_INVALID};
+            THROW_ERROR(RUNTIME_ERROR, "invalid arithmetic operation", 0l);
         }
     }
 
     case AST_DECLARATION: {
         e_declare(arena, node->declaration, scope);
 
-        return (eValue) {.type = VT_INVALID};
+        return (eResult) {.value = {0}, .is_void = true};
     }
 
     case AST_ASSIGNMENT: {
         e_assign(arena, node->assignment, scope);
 
-        return (eValue) {.type = VT_INVALID};
+        return (eResult) {.value = {0}, .is_void = true};
     }
 
     case AST_FUNCTION_CALL: {
@@ -175,86 +199,110 @@ eValue e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_IF_STATEMENT: {
-        eValue condition = e_evaluate(arena, node->if_statement.condition, scope);
+        eResult condition = e_evaluate(arena, node->if_statement.condition, scope);
 
-        if(condition.boolean)
+        if(condition.value.boolean)
         {
             e_evaluate_body(arena, node->if_statement.body, scope);
         }
 
-        return (eValue) {.type = VT_INVALID};
+        return (eResult) {.value = {0}, .is_void = true};
     }
 
     case AST_WHILE_LOOP: {
-        eValue condition = e_evaluate(arena, node->while_loop.condition, scope);
+        eResult condition = e_evaluate(arena, node->while_loop.condition, scope);
 
-        while(condition.boolean)
+        while(condition.value.boolean)
         {
             e_evaluate_body(arena, node->while_loop.body, scope);
 
             condition = e_evaluate(arena, node->while_loop.condition, scope);
         }
 
-        return (eValue) {.type = VT_INVALID};
+        return (eResult) {.value = {0}, .is_void = true};
     }
 
     case AST_BOOL_LITERAL: {
-        return (eValue) {.type = VT_BOOL, .boolean = node->bool_literal.value};
+        return (eResult) {
+            .value = {
+                .type = VT_BOOL,
+                .boolean = node->bool_literal.value
+            },
+            .is_void = false
+        };
     }
 
     case AST_CONDITION: {
-        eValue lhs = e_evaluate(arena, node->condition.lhs, scope);
-        eValue rhs = e_evaluate(arena, node->condition.rhs, scope);
+        eResult lhs = e_evaluate(arena, node->condition.lhs, scope);
+        eResult rhs = e_evaluate(arena, node->condition.rhs, scope);
 
         switch(node->condition.op)
         {
         case BOP_AND:
-            return (eValue) {
-                .type = VT_BOOL,
-                .boolean = lhs.boolean && rhs.boolean
+            return (eResult) {
+                .value = {
+                    .type = VT_BOOL,
+                    .boolean = lhs.value.boolean && rhs.value.boolean
+                },
+                .is_void = false
             };
 
         case BOP_OR:
-            return (eValue) {
-                .type = VT_BOOL,
-                .boolean = lhs.boolean || rhs.boolean
+            return (eResult) {
+                .value = {
+                    .type = VT_BOOL,
+                    .boolean = lhs.value.boolean || rhs.value.boolean
+                },
+                .is_void = false
             };
 
         case BOP_IS_EQUAL:
-            return (eValue) {
-                .type = VT_BOOL,
-                .boolean = is_equal(lhs, rhs)
+            return (eResult) {
+                .value = {
+                    .type = VT_BOOL,
+                    .boolean = is_equal(lhs.value, rhs.value)
+                },
+                .is_void = false
             };
 
         case BOP_IS_LESS:
-            return (eValue) {
-                .type = VT_BOOL,
-                .boolean = is_less(lhs, rhs)
+            return (eResult) {
+                .value = {
+                    .type = VT_BOOL,
+                    .boolean = is_less(lhs.value, rhs.value)
+                },
+                .is_void = false
             };
 
         case BOP_IS_GREATER:
-            return (eValue) {
-                .type = VT_BOOL,
-                .boolean = is_greater(lhs, rhs)
+            return (eResult) {
+                .value = {
+                    .type = VT_BOOL,
+                    .boolean = is_greater(lhs.value, rhs.value)
+                },
+                .is_void = false
             };
 
         default:
-            return (eValue) {.type = VT_INVALID};
+            THROW_ERROR(RUNTIME_ERROR, "unknown condition", 0l);
         }
     }
 
     case AST_FUNCTION_DECL:
         e_declare_function(arena, node->function_decl, scope);
 
-        return (eValue) {.type = VT_INVALID};
+        return (eResult) {.value = {0}, .is_void = true};
+
+    case AST_RETURN:
+        THROW_ERROR(RUNTIME_ERROR, "cannot return outside of a function", 0l);
 
     default: {
-        return (eValue) {.type = VT_INVALID};
+        THROW_ERROR(RUNTIME_ERROR, "unknown expression", 0l);
     }
     }
 }
 
-void e_evaluate_body(eArena *arena, eListNode *body, eScope *scope)
+eResult e_evaluate_body(eArena *arena, eListNode *body, eScope *scope)
 {
     eListNode *current = body;
     while(current != NULL)
@@ -301,7 +349,7 @@ static FunctionMap get_builtin_function(eString identifier)
     return (FunctionMap) {.func = NULL, .identifier = {0}, .num_arguments = 0};
 }
 
-eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
+eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 {
     eASTFunctionDecl *function = get_function(call.identifier, scope);
     if(function != NULL)
@@ -330,11 +378,39 @@ eValue e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
             current_param = current_param->next;
         }
 
-        e_evaluate_body(arena, function->body, &function_scope);
+        // e_evaluate_body(arena, function->body, &function_scope);
+
+        eListNode *current = function->body;
+        while(current != NULL)
+        {
+            eASTNode *node = (eASTNode *) current->data;
+            // TODO: This is a workaround, please fix
+            if(node->tag == AST_RETURN)
+            {
+                eResult return_value = e_evaluate(arena, node->return_stmt.arg, &function_scope);
+                if(return_value.value.type != function->return_type || function->return_type == VT_VOID)
+                {
+                    THROW_ERROR(RUNTIME_ERROR, "invalid return value", 0l);
+                }
+
+                e_scope_free(&function_scope);
+
+                return return_value;
+            }
+
+            e_evaluate(arena, node, &function_scope);
+
+            current = current->next;
+        }
 
         e_scope_free(&function_scope);
 
-        return (eValue) {.type = VT_INVALID};
+        if(function->return_type != VT_VOID)
+        {
+            THROW_ERROR(RUNTIME_ERROR, "no return statement found inside function", 0l);
+        }
+
+        return (eResult) {.value = {0}, .is_void = true};
     }
 
     FunctionMap built_in = get_builtin_function(call.identifier);
@@ -371,18 +447,23 @@ void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
         current_scope = current_scope->parent;
     }
 
-    eValue value = e_evaluate(arena, declaration.init, scope);
+    eResult result = e_evaluate(arena, declaration.init, scope);
 
-    if(value.type != declaration.value_type && declaration.value_type != VT_INVALID)
+    if(result.is_void)
+    {
+        THROW_ERROR(RUNTIME_ERROR, "cannot assign a void type to a variable", 0l);
+    }
+
+    if(result.value.type != declaration.value_type && declaration.value_type != VT_VOID)
     {
         THROW_ERROR(RUNTIME_ERROR, "type conflict", 0l);
     }
 
     e_list_push(arena, &scope->variables, &(eVariable) {
         .identifier = declaration.identifier,
-        .value = value,
+        .value = result.value,
         .type = declaration.type,
-        .value_type = value.type
+        .value_type = result.value.type
     }, sizeof(eVariable));
 }
 
@@ -425,14 +506,14 @@ void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
                     THROW_ERROR(RUNTIME_ERROR, "cannot reassign a constant", 0l);
                 }
 
-                eValue new_value = e_evaluate(arena, assignment.init, scope);
+                eResult result = e_evaluate(arena, assignment.init, scope);
 
-                if(new_value.type != var->value_type)
+                if(result.value.type != var->value_type)
                 {
                     THROW_ERROR(RUNTIME_ERROR, "cannot assign a variable a value of different type", 0l);
                 }
 
-                var->value = new_value;
+                var->value = result.value;
 
                 return;
             }

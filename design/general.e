@@ -7,7 +7,7 @@
 // Multiline comments like in C do not exist
 
 // Entry point
-fun main() -> void // Return type
+fun main(): void // Return type
 {
     const text: string = "Hello World" // The language doesn't use semicolons
     var i: int = 24
