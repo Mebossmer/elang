@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#include "elex.h"
-#include "einterpreter.h"
-#include "eerror.h"
+#include <elex.h>
+#include <einterpreter.h>
+#include <eerror.h>
 
 eString read_file(eArena *arena, const char *path)
 {
