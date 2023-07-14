@@ -205,6 +205,10 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
         {
             e_evaluate_body(arena, node->if_statement.body, scope);
         }
+        else if(node->if_statement.else_body != NULL)
+        {
+            e_evaluate_body(arena, node->if_statement.else_body, scope);
+        }
 
         return (eResult) {.value = {0}, .is_void = true};
     }

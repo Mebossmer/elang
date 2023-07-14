@@ -8,5 +8,16 @@ fun sayHello()
     print("Hello World")
 }
 
-print(square(8))
+const foo: int = 18
+
+print(square(foo))
 sayHello()
+
+if(foo == 17)
+{
+    print("foo is 17")
+}
+else
+{
+    print("foo is not 17")
+}

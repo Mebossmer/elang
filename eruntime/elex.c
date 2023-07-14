@@ -31,6 +31,7 @@ static KeywordMap keywords[] = {
     {.text = {.ptr = "true", .len = 4}, .tag = ETK_KEYWORD_TRUE},
     {.text = {.ptr = "false", .len = 5}, .tag = ETK_KEYWORD_FALSE},
     {.text = {.ptr = "if", .len = 2}, .tag = ETK_KEYWORD_IF},
+    {.text = {.ptr = "else", .len = 4}, .tag = ETK_KEYWORD_ELSE},
     {.text = {.ptr = "while", .len = 5}, .tag = ETK_KEYWORD_WHILE},
     {.text = {.ptr = "and", .len = 3}, .tag = ETK_KEYWORD_AND},
     {.text = {.ptr = "or", .len = 2}, .tag = ETK_KEYWORD_OR},

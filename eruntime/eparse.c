@@ -477,16 +477,19 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
         }
 
         eListNode *body = e_parse_body(arena, self);
-        if(body == NULL)
+
+        eListNode *else_body = NULL;
+        if(accept(self, ETK_KEYWORD_ELSE))
         {
-            return NULL;
+            else_body = e_parse_body(arena, self);
         }
 
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_IF_STATEMENT,
             .if_statement = (eASTIfStatement) {
                 .condition = condition,
-                .body = body
+                .body = body,
+                .else_body = else_body
             }
         });
     }
@@ -600,6 +603,11 @@ eListNode *e_parse_body(eArena *arena, eParser *self)
     expect(self, ETK_L_CURLY_BRACE);
 
     eListNode *stmts = NULL;
+
+    if(accept(self, ETK_R_CURLY_BRACE))
+    {
+        return NULL;
+    }
 
     do
     {

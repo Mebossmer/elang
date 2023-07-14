@@ -85,6 +85,7 @@ typedef struct
     eASTNode *condition;
 
     eListNode *body; // eASTNode *
+    eListNode *else_body; // eASTNode * (NULL if no body)
 } eASTIfStatement;
 
 typedef struct
