@@ -21,13 +21,14 @@ static FunctionMap builtin_functions[] = {
     {.identifier = {.ptr = "exit", .len = 4}, .func = __e_exit, .num_arguments = 1}
 };
 
-eScope e_scope_new(eScope *parent)
+eScope e_scope_new(eScope *parent, eASTFunctionDecl *function)
 {
     return (eScope) {
         .allocator = e_arena_new(2048),
         .parent = parent,
         .functions = NULL,
-        .variables = NULL
+        .variables = NULL,
+        .function = function
     };
 }
 
@@ -103,7 +104,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                 .type = VT_INT,
                 .integer = node->numeric_literal.value
             },
-            .is_void = false
+            .is_void = false,
+            .is_return = false
         };
     }
 
@@ -113,7 +115,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                 .type = VT_STRING,
                 .string = node->string_literal.value
             },
-            .is_void = false
+            .is_void = false,
+            .is_return = false
         };
     }
 
@@ -122,7 +125,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
 
         return (eResult) {
             .value = value,
-            .is_void = false
+            .is_void = false,
+            .is_return = false
         };
     }
 
@@ -139,6 +143,7 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .integer = lhs.value.integer + rhs.value.integer
                 },
                 .is_void = false,
+                .is_return = false
             };
 
         case OP_SUB:
@@ -147,7 +152,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .type = VT_INT,
                     .integer = lhs.value.integer - rhs.value.integer
                 },
-                .is_void = false
+                .is_void = false,
+                .is_return = false
             };
 
         case OP_MUL:
@@ -156,7 +162,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .type = VT_INT,
                     .integer = lhs.value.integer * rhs.value.integer
                 },
-                .is_void = false
+                .is_void = false,
+                .is_return = false
             };
 
         case OP_DIV:
@@ -165,7 +172,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .type = VT_INT,
                     .integer = lhs.value.integer / rhs.value.integer
                 },
-                .is_void = false
+                .is_void = false,
+                .is_return = false
             };
 
         case OP_MOD:
@@ -174,7 +182,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .type = VT_INT,
                     .integer = lhs.value.integer % rhs.value.integer
                 },
-                .is_void = false
+                .is_void = false,
+                .is_return = false
             };
 
         default:
@@ -185,13 +194,13 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     case AST_DECLARATION: {
         e_declare(arena, node->declaration, scope);
 
-        return (eResult) {.value = {0}, .is_void = true};
+        return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
 
     case AST_ASSIGNMENT: {
         e_assign(arena, node->assignment, scope);
 
-        return (eResult) {.value = {0}, .is_void = true};
+        return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
 
     case AST_FUNCTION_CALL: {
@@ -201,16 +210,18 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     case AST_IF_STATEMENT: {
         eResult condition = e_evaluate(arena, node->if_statement.condition, scope);
 
+        eResult result = {0};
         if(condition.value.boolean)
         {
-            e_evaluate_body(arena, node->if_statement.body, scope);
+            result = e_evaluate_body(arena, node->if_statement.body, scope);
         }
         else if(node->if_statement.else_body != NULL)
         {
-            e_evaluate_body(arena, node->if_statement.else_body, scope);
+            result = e_evaluate_body(arena, node->if_statement.else_body, scope);
         }
 
-        return (eResult) {.value = {0}, .is_void = true};
+        // return (eResult) {.value = {0}, .is_void = true, .is_return = false};
+        return result;
     }
 
     case AST_WHILE_LOOP: {
@@ -223,7 +234,7 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
             condition = e_evaluate(arena, node->while_loop.condition, scope);
         }
 
-        return (eResult) {.value = {0}, .is_void = true};
+        return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
 
     case AST_BOOL_LITERAL: {
@@ -232,7 +243,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                 .type = VT_BOOL,
                 .boolean = node->bool_literal.value
             },
-            .is_void = false
+            .is_void = false,
+            .is_return = false
         };
     }
 
@@ -248,7 +260,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .type = VT_BOOL,
                     .boolean = lhs.value.boolean && rhs.value.boolean
                 },
-                .is_void = false
+                .is_void = false,
+                .is_return = false
             };
 
         case BOP_OR:
@@ -257,7 +270,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .type = VT_BOOL,
                     .boolean = lhs.value.boolean || rhs.value.boolean
                 },
-                .is_void = false
+                .is_void = false,
+                .is_return = false
             };
 
         case BOP_IS_EQUAL:
@@ -266,7 +280,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .type = VT_BOOL,
                     .boolean = is_equal(lhs.value, rhs.value)
                 },
-                .is_void = false
+                .is_void = false,
+                .is_return = false
             };
 
         case BOP_IS_LESS:
@@ -275,7 +290,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .type = VT_BOOL,
                     .boolean = is_less(lhs.value, rhs.value)
                 },
-                .is_void = false
+                .is_void = false,
+                .is_return = false
             };
 
         case BOP_IS_GREATER:
@@ -284,7 +300,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
                     .type = VT_BOOL,
                     .boolean = is_greater(lhs.value, rhs.value)
                 },
-                .is_void = false
+                .is_void = false,
+                .is_return = false
             };
 
         default:
@@ -295,10 +312,27 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     case AST_FUNCTION_DECL:
         e_declare_function(arena, node->function_decl, scope);
 
-        return (eResult) {.value = {0}, .is_void = true};
+        return (eResult) {.value = {0}, .is_void = true, .is_return = false};
 
-    case AST_RETURN:
-        THROW_ERROR(RUNTIME_ERROR, "cannot return outside of a function", 0l);
+    case AST_RETURN: {
+        if(scope->function == NULL)
+        {
+            THROW_ERROR(RUNTIME_ERROR, "cannot return ouside of function", 0l);
+        }
+
+        eResult return_value = e_evaluate(arena, node->return_stmt.arg, scope);
+        if(return_value.value.type != scope->function->return_type || scope->function->return_type == VT_VOID)
+        {
+            THROW_ERROR(RUNTIME_ERROR, "invalid return value", 0l);
+        }
+
+        if(return_value.value.type == VT_VOID)
+        {
+            THROW_ERROR(RUNTIME_ERROR, "cannot return a void type", 0l);
+        }
+
+        return (eResult) {.value = return_value.value, .is_void = false, .is_return = true};
+    }
 
     default: {
         THROW_ERROR(RUNTIME_ERROR, "unknown expression", 0l);
@@ -311,10 +345,16 @@ eResult e_evaluate_body(eArena *arena, eListNode *body, eScope *scope)
     eListNode *current = body;
     while(current != NULL)
     {
-        e_evaluate(arena, (eASTNode *) current->data, scope);
+        eResult result = e_evaluate(arena, (eASTNode *) current->data, scope);
+        if(result.is_return)
+        {
+            return result;
+        }
 
         current = current->next;
     }
+
+    return (eResult) {.value = {0}, .is_void = true, .is_return = false};
 }
 
 static eASTFunctionDecl *get_function(eString identifier, eScope *scope)
@@ -363,7 +403,7 @@ eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
             THROW_ERROR(RUNTIME_ERROR, "wrong amount of arguments provided", 0l);
         }
 
-        eScope function_scope = e_scope_new(scope);
+        eScope function_scope = e_scope_new(scope, function);
 
         eListNode *current_arg = call.arguments;
         eListNode *current_param = function->params;
@@ -388,6 +428,7 @@ eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
         while(current != NULL)
         {
             eASTNode *node = (eASTNode *) current->data;
+            /*
             // TODO: This is a workaround, please fix
             if(node->tag == AST_RETURN)
             {
@@ -401,8 +442,16 @@ eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 
                 return return_value;
             }
+            */
 
-            e_evaluate(arena, node, &function_scope);
+            eResult result = e_evaluate(arena, node, &function_scope);
+            if(result.is_return)
+            {
+                // Return from the function
+                e_scope_free(&function_scope);
+
+                return result;
+            }
 
             current = current->next;
         }
@@ -414,7 +463,7 @@ eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
             THROW_ERROR(RUNTIME_ERROR, "no return statement found inside function", 0l);
         }
 
-        return (eResult) {.value = {0}, .is_void = true};
+        return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
 
     FunctionMap built_in = get_builtin_function(call.identifier);

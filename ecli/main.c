@@ -53,7 +53,7 @@ int main(int argc, char **argv)
         return -1;
     }
 
-    eScope global = e_scope_new(NULL);
+    eScope global = e_scope_new(NULL, false);
 
     eListNode *tokens = e_lex(&arena, txt);
 

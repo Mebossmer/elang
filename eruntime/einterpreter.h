@@ -24,6 +24,8 @@ typedef struct
     eValue value;
 
     bool is_void;
+
+    bool is_return;
 } eResult;
 
 typedef struct
@@ -44,9 +46,12 @@ struct escope
 
     eListNode *variables; // eVariable
     eListNode *functions; // eASTFunctionDecl
+
+    // bool inside_fun; // Wether the scope is inside a function scope
+    eASTFunctionDecl *function; // NULL if not inside function
 };
 
-eScope e_scope_new(/* Nullable */ eScope *parent);
+eScope e_scope_new(/* Nullable */ eScope *parent, /* Nullable */ eASTFunctionDecl *function);
 
 void e_scope_free(eScope *scope);
 
