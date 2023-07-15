@@ -30,6 +30,15 @@ eString e_string_slice(eString string, size_t index, size_t len)
     };
 }
 
+eString e_string_combine(eArena *arena, eString a, eString b)
+{
+    eString result = e_string_alloc(arena, a.len + b.len);
+    memcpy(result.ptr, a.ptr, a.len);
+    memcpy(result.ptr + a.len, b.ptr, b.len);
+
+    return result;
+}
+
 bool e_string_compare(eString a, eString b)
 {
     if(a.len != b.len)

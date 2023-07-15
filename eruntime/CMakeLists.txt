@@ -8,4 +8,5 @@ add_library("eruntime" STATIC
     "elist.c"
     "eparse.c"
     "estring.c"
+    "eio.c"
 )

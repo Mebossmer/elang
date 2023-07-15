@@ -1,9 +1,11 @@
 #include "einterpreter.h"
 #include "ebuiltin.h"
 #include "eerror.h"
+#include "eio.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
 typedef eResult(* BuiltinFunction)(eArena *arena, eScope *scope, eListNode *arguments);
 
@@ -20,6 +22,30 @@ static FunctionMap builtin_functions[] = {
     {.identifier = {.ptr = "print", .len = 5}, .func = __e_print, .num_arguments = 1},
     {.identifier = {.ptr = "exit", .len = 4}, .func = __e_exit, .num_arguments = 1}
 };
+
+bool e_exec_file(eString path, eScope *scope)
+{
+    eString txt = e_read_file(&scope->allocator, path);
+    if(!txt.ptr)
+    {
+        return false;
+    }
+
+    eListNode *tokens = e_lex(&scope->allocator, txt);
+
+    eParser parser = e_parser_new(tokens, txt);
+
+    eASTNode *expr = e_parse_statement(&scope->allocator, &parser);
+
+    while(expr->tag != AST_EOF)
+    {
+        eResult value = e_evaluate(&scope->allocator, expr, scope);
+
+        expr = e_parse_statement(&scope->allocator, &parser);
+    }
+
+    return true;
+}
 
 eScope e_scope_new(eScope *parent, eASTFunctionDecl *function)
 {
@@ -332,6 +358,12 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
         }
 
         return (eResult) {.value = return_value.value, .is_void = false, .is_return = true};
+    }
+
+    case AST_IMPORT: {
+        e_exec_file(e_string_slice(node->import_stmt.path, 1, node->import_stmt.path.len - 2), scope);
+
+        return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
 
     default: {

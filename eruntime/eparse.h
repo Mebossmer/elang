@@ -19,6 +19,7 @@ typedef enum
     AST_FUNCTION_DECL,
     AST_FUNCTION_CALL,
     AST_RETURN,
+    AST_IMPORT,
 
     AST_DECLARATION,
     AST_ASSIGNMENT,
@@ -154,6 +155,11 @@ typedef struct
     eASTNode *arg;
 } eASTReturn;
 
+typedef struct
+{
+    eString path;
+} eASTImport;
+
 struct eastnode
 {
     eASTTag tag;
@@ -185,6 +191,8 @@ struct eastnode
         eASTFunctionDecl function_decl;
 
         eASTReturn return_stmt;
+
+        eASTImport import_stmt;
     };
 };
 
@@ -199,7 +207,7 @@ typedef struct
 
 eASTNode *e_ast_alloc(eArena *arena, eASTNode node);
 
-eParser e_parser_new(eArena *arena, eListNode *tokens, eString src);
+eParser e_parser_new(eListNode *tokens, eString src);
 
 eASTNode *e_parse_factor(eArena *arena, eParser *self);
 

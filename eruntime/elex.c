@@ -40,7 +40,8 @@ static KeywordMap keywords[] = {
     {.text = {.ptr = "int", .len = 3}, .tag = ETK_KEYWORD_TYPE_INT},
     {.text = {.ptr = "bool", .len = 4}, .tag = ETK_KEYWORD_TYPE_BOOL},
     {.text = {.ptr = "void", .len = 4}, .tag = ETK_KEYWORD_TYPE_VOID},
-    {.text = {.ptr = "return", .len = 6}, .tag = ETK_KEYWORD_RETURN}
+    {.text = {.ptr = "return", .len = 6}, .tag = ETK_KEYWORD_RETURN},
+    {.text = {.ptr = "import", .len = 6}, .tag = ETK_KEYWORD_IMPORT}
 };
 
 static SpecialMap special[] = {

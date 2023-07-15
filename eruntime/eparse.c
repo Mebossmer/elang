@@ -14,7 +14,7 @@ eASTNode *e_ast_alloc(eArena *arena, eASTNode node)
     return new;
 }
 
-eParser e_parser_new(eArena *arena, eListNode *tokens, eString src)
+eParser e_parser_new(eListNode *tokens, eString src)
 {
     return (eParser) {
         .tokens = tokens,
@@ -583,6 +583,20 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
             .tag = AST_RETURN,
             .return_stmt = (eASTReturn) {
                 .arg = e_parse_expression(arena, self)
+            }
+        });
+    }
+    else if(accept(self, ETK_KEYWORD_IMPORT))
+    {
+        eToken *path_tk = E_LIST_AT(self->tokens, self->index, eToken *);
+        eString path = e_string_slice(self->src, path_tk->start, path_tk->len);
+
+        expect(self, ETK_STRING);
+
+        return e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_IMPORT,
+            .import_stmt = (eASTImport) {
+                .path = path
             }
         });
     }

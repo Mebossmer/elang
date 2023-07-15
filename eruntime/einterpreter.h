@@ -51,6 +51,11 @@ struct escope
     eASTFunctionDecl *function; // NULL if not inside function
 };
 
+/**
+ * Returns true on success and false if the file couldn't be read
+*/
+bool e_exec_file(eString path, eScope *scope);
+
 eScope e_scope_new(/* Nullable */ eScope *parent, /* Nullable */ eASTFunctionDecl *function);
 
 void e_scope_free(eScope *scope);
