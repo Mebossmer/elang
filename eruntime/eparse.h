@@ -135,6 +135,8 @@ typedef struct
 
     eListNode *params; // eFunctionParam
     eListNode *body; // eASTNode *
+
+    bool is_extern;
 } eASTFunctionDecl;
 
 typedef struct

@@ -1,27 +1,11 @@
 #include "einterpreter.h"
-#include "ebuiltin.h"
 #include "eerror.h"
 #include "eio.h"
+#include "effi.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
-
-typedef eResult(* BuiltinFunction)(eArena *arena, eScope *scope, eListNode *arguments);
-
-typedef struct
-{
-    eString identifier;
-
-    BuiltinFunction func;
-
-    size_t num_arguments;
-} FunctionMap;
-
-static FunctionMap builtin_functions[] = {
-    {.identifier = {.ptr = "print", .len = 5}, .func = __e_print, .num_arguments = 1},
-    {.identifier = {.ptr = "exit", .len = 4}, .func = __e_exit, .num_arguments = 1}
-};
 
 bool e_exec_file(eString path, eScope *scope)
 {
@@ -412,19 +396,6 @@ static eASTFunctionDecl *get_function(eString identifier, eScope *scope)
     return NULL;
 }
 
-static FunctionMap get_builtin_function(eString identifier)
-{
-    for(size_t i = 0; i < sizeof(builtin_functions) / sizeof(FunctionMap); i++)
-    {
-        if(e_string_compare(identifier, builtin_functions[i].identifier))
-        {
-            return builtin_functions[i];
-        }
-    }
-
-    return (FunctionMap) {.func = NULL, .identifier = {0}, .num_arguments = 0};
-}
-
 eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 {
     eASTFunctionDecl *function = get_function(call.identifier, scope);
@@ -441,6 +412,7 @@ eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
         eListNode *current_param = function->params;
         while(current_arg != NULL)
         {
+            // Declare all function parameters as variables
             eASTFunctionParam *param = (eASTFunctionParam *) current_param->data;
 
             e_declare(&function_scope.allocator, (eASTDeclaration) {
@@ -454,27 +426,10 @@ eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
             current_param = current_param->next;
         }
 
-        // e_evaluate_body(arena, function->body, &function_scope);
-
         eListNode *current = function->body;
         while(current != NULL)
         {
             eASTNode *node = (eASTNode *) current->data;
-            /*
-            // TODO: This is a workaround, please fix
-            if(node->tag == AST_RETURN)
-            {
-                eResult return_value = e_evaluate(arena, node->return_stmt.arg, &function_scope);
-                if(return_value.value.type != function->return_type || function->return_type == VT_VOID)
-                {
-                    THROW_ERROR(RUNTIME_ERROR, "invalid return value", 0l);
-                }
-
-                e_scope_free(&function_scope);
-
-                return return_value;
-            }
-            */
 
             eResult result = e_evaluate(arena, node, &function_scope);
             if(result.is_return)
@@ -498,6 +453,7 @@ eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
         return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
 
+    /*
     FunctionMap built_in = get_builtin_function(call.identifier);
     if(built_in.func != NULL)
     {
@@ -508,6 +464,9 @@ eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
 
         return built_in.func(arena, scope, call.arguments);
     }
+    */
+
+    return e_ffi_call(call.identifier, (eString) {.ptr = "./build/elibrary/libelibrary.so", .len = 31}, arena, scope, call.arguments);
 
     THROW_ERROR(RUNTIME_ERROR, "unknown identifier", 0l);
 }

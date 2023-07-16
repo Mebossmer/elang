@@ -4,3 +4,4 @@ project(elang C)
 
 add_subdirectory("eruntime")
 add_subdirectory("ecli")
+add_subdirectory("elibrary")

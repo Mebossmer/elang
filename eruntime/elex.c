@@ -41,7 +41,8 @@ static KeywordMap keywords[] = {
     {.text = {.ptr = "bool", .len = 4}, .tag = ETK_KEYWORD_TYPE_BOOL},
     {.text = {.ptr = "void", .len = 4}, .tag = ETK_KEYWORD_TYPE_VOID},
     {.text = {.ptr = "return", .len = 6}, .tag = ETK_KEYWORD_RETURN},
-    {.text = {.ptr = "import", .len = 6}, .tag = ETK_KEYWORD_IMPORT}
+    {.text = {.ptr = "import", .len = 6}, .tag = ETK_KEYWORD_IMPORT},
+    {.text = {.ptr = "extern", .len = 6}, .tag = ETK_KEYWORD_EXTERN}
 };
 
 static SpecialMap special[] = {

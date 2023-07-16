@@ -519,6 +519,12 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
     }
     else if(accept(self, ETK_KEYWORD_FUN))
     {
+        bool is_extern = false;
+        if(accept(self, ETK_KEYWORD_EXTERN))
+        {
+            is_extern = true;
+        }
+        
         eToken *id = E_LIST_AT(self->tokens, self->index, eToken *);
 
         expect(self, ETK_IDENTIFIER);
@@ -573,7 +579,8 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
                 .identifier = e_string_slice(self->src, id->start, id->len),
                 .return_type = return_type,
                 .params = params,
-                .body = body
+                .body = body,
+                .is_extern = true
             }
         });
     }

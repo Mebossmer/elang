@@ -1,4 +1,4 @@
-#include "ebuiltin.h"
+#include "io.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -12,7 +12,7 @@ static void println(eString string)
     putc('\n', stdout);
 }
 
-eResult __e_print(eArena *arena, eScope *scope, eListNode *arguments)
+eResult print(eArena *arena, eScope *scope, eListNode *arguments)
 {
     eResult result = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
 
@@ -46,7 +46,7 @@ eResult __e_print(eArena *arena, eScope *scope, eListNode *arguments)
     return (eResult) {.value = {0}, .is_void = true};
 }
 
-eResult __e_exit(eArena *arena, eScope *scope, eListNode *arguments)
+eResult quit(eArena *arena, eScope *scope, eListNode *arguments)
 {
     eResult result = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
 
