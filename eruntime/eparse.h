@@ -2,6 +2,7 @@
 
 #include "elex.h"
 #include "elist.h"
+#include "estack.h"
 
 typedef struct eastnode eASTNode;
 

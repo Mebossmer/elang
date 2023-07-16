@@ -13,7 +13,7 @@ char *c_str(eArena *arena, eString str)
 }
 
 // TODO: make this cross-platform
-eResult e_ffi_call(eString name, eString lib, eArena *arena, eScope *scope, eListNode *arguments)
+eResult e_ffi_call(eString name, eString lib, eArena *arena, eScope *scope, eStack *arguments)
 {
     eArena tmp = e_arena_new(32);
     char *path = c_str(&tmp, lib);

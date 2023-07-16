@@ -202,7 +202,13 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_DECLARATION: {
-        e_declare(arena, node->declaration, scope);
+        eResult result = e_evaluate(arena, node->declaration.init, scope);
+        if(result.is_void)
+        {
+            THROW_ERROR(RUNTIME_ERROR, "cannot assign void to a variable", 0l);
+        }
+
+        e_declare(arena, node->declaration.identifier, result.value, node->declaration.type, node->declaration.value_type, scope);
 
         return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
@@ -214,7 +220,26 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_FUNCTION_CALL: {
-        return e_call(arena, node->function_call, scope);
+        eStack args = e_stack_new(arena, 128, sizeof(eValue));
+
+        eListNode *current = node->function_call.arguments;
+        while(current != NULL)
+        {
+            eResult result = e_evaluate(arena, current->data, scope);
+            if(result.is_void)
+            {
+                THROW_ERROR(RUNTIME_ERROR, "cannot accept void as argument", 0l);
+            }
+
+            e_stack_push(arena, &args, &result.value);
+
+            current = current->next;
+        }
+
+        return e_call(arena, (eFunctionCall) {
+            .args = args,
+            .identifier = node->function_call.identifier
+        }, scope);
     }
 
     case AST_IF_STATEMENT: {
@@ -396,54 +421,48 @@ static eASTFunctionDecl *get_function(eString identifier, eScope *scope)
     return NULL;
 }
 
-eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
+eResult e_call(eArena *arena, eFunctionCall call, eScope *scope)
 {
     eASTFunctionDecl *function = get_function(call.identifier, scope);
     if(function != NULL)
     {
-        if(e_list_len(call.arguments) != e_list_len(function->params))
+        if(e_stack_len(&call.args) != e_list_len(function->params))
         {
-            THROW_ERROR(RUNTIME_ERROR, "wrong amount of arguments provided", 0l);
+            THROW_ERROR(RUNTIME_ERROR, "wrong amount of args provided", 0l);
         }
 
-        eScope function_scope = e_scope_new(scope, function);
-
-        eListNode *current_arg = call.arguments;
+        // Declare all arguments as variables
+        eScope fn_scope = e_scope_new(scope, function);
         eListNode *current_param = function->params;
-        while(current_arg != NULL)
+        for(size_t i = 0; i < e_stack_len(&call.args); i++)
         {
-            // Declare all function parameters as variables
             eASTFunctionParam *param = (eASTFunctionParam *) current_param->data;
+            eValue value = E_STACK_POP(&call.args, eValue);
 
-            e_declare(&function_scope.allocator, (eASTDeclaration) {
-                .identifier = param->identifier,
-                .init = (eASTNode *) current_arg->data,
-                .type = AT_VAR,
-                .value_type = param->value_type
-            }, &function_scope);
+            e_declare(&fn_scope.allocator, param->identifier, value, AT_VAR, param->value_type, &fn_scope);
 
-            current_arg = current_arg->next;
             current_param = current_param->next;
         }
 
+        // Execute the function
         eListNode *current = function->body;
         while(current != NULL)
         {
             eASTNode *node = (eASTNode *) current->data;
 
-            eResult result = e_evaluate(arena, node, &function_scope);
+            eResult result = e_evaluate(arena, node, &fn_scope);
             if(result.is_return)
             {
-                // Return from the function
-                e_scope_free(&function_scope);
+                // Return from function
+                e_scope_free(&fn_scope);
 
                 return result;
             }
-
+            
             current = current->next;
         }
 
-        e_scope_free(&function_scope);
+        e_scope_free(&fn_scope);
 
         if(function->return_type != VT_VOID)
         {
@@ -453,34 +472,22 @@ eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope)
         return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
 
-    /*
-    FunctionMap built_in = get_builtin_function(call.identifier);
-    if(built_in.func != NULL)
-    {
-        if(e_list_len(call.arguments) != built_in.num_arguments)
-        {
-            THROW_ERROR(RUNTIME_ERROR, "invalid amount of arguments", 0l);
-        }
-
-        return built_in.func(arena, scope, call.arguments);
-    }
-    */
-
-    return e_ffi_call(call.identifier, (eString) {.ptr = "./build/elibrary/libelibrary.so", .len = 31}, arena, scope, call.arguments);
-
-    THROW_ERROR(RUNTIME_ERROR, "unknown identifier", 0l);
+    // TODO: this is temporary
+    return e_ffi_call(call.identifier, (eString) {.ptr = "./build/elibrary/libelibrary.so", .len = 31}, arena, scope, &call.args);
 }
 
-void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
+void e_declare(eArena *arena, eString identifier, eValue value, eAssignmentType type, eValueType decl_type, eScope *scope)
 {
+    // Search for variables with the same name
     eScope *current_scope = scope;
     while(current_scope != NULL)
     {
         eListNode *current = current_scope->variables;
         while(current != NULL)
         {
+            // Throw an error if there is already a variable with that name
             eVariable *var = (eVariable *) current->data;
-            if(e_string_compare(var->identifier, declaration.identifier))
+            if(e_string_compare(var->identifier, identifier))
             {
                 THROW_ERROR(RUNTIME_ERROR, "name conflict", 0l);
             }
@@ -491,34 +498,30 @@ void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope)
         current_scope = current_scope->parent;
     }
 
-    eResult result = e_evaluate(arena, declaration.init, scope);
-
-    if(result.is_void)
-    {
-        THROW_ERROR(RUNTIME_ERROR, "cannot assign a void type to a variable", 0l);
-    }
-
-    if(result.value.type != declaration.value_type && declaration.value_type != VT_VOID)
+    if(value.type != decl_type && decl_type != VT_VOID)
     {
         THROW_ERROR(RUNTIME_ERROR, "type conflict", 0l);
     }
 
+    // Push the variable to the list
     e_list_push(arena, &scope->variables, &(eVariable) {
-        .identifier = declaration.identifier,
-        .value = result.value,
-        .type = declaration.type,
-        .value_type = result.value.type
+        .identifier = identifier,
+        .value = value,
+        .type = type,
+        .value_type = value.type
     }, sizeof(eVariable));
 }
 
 void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope)
 {
+    // Search for function with the same name
     eScope *current_scope = scope;
     while(current_scope != NULL)
     {
         eListNode *current = scope->functions;
         while(current != NULL)
         {
+            // Throw an error if a function with that name already exists
             eASTFunctionDecl *decl = (eASTFunctionDecl *) current->data;
             if(e_string_compare(decl->identifier, declaration.identifier))
             {
@@ -531,11 +534,13 @@ void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *sco
         current_scope = current_scope->parent;
     }
 
+    // Push the function to the list
     e_list_push(arena, &scope->functions, &declaration, sizeof(eASTFunctionDecl));
 }
 
 void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
 {
+    // Search for the corresponding variable
     eScope *current_scope = scope;
     while(current_scope != NULL)
     {
@@ -557,6 +562,7 @@ void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
                     THROW_ERROR(RUNTIME_ERROR, "cannot assign a variable a value of different type", 0l);
                 }
 
+                // Assign
                 var->value = result.value;
 
                 return;

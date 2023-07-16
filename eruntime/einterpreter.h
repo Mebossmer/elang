@@ -38,6 +38,13 @@ typedef struct
     eAssignmentType type;
 } eVariable;
 
+typedef struct
+{
+    eString identifier;
+
+    eStack args; // eValue
+} eFunctionCall;
+
 struct escope
 {
     eScope *parent;
@@ -64,9 +71,9 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope);
 
 eResult e_evaluate_body(eArena *arena, eListNode *body, eScope *scope);
 
-eResult e_call(eArena *arena, eASTFunctionCall call, eScope *scope);
+eResult e_call(eArena *arena, eFunctionCall call, eScope *scope);
 
-void e_declare(eArena *arena, eASTDeclaration declaration, eScope *scope);
+void e_declare(eArena *arena, eString identifier, eValue value, eAssignmentType type, eValueType decl_type, eScope *scope);
 
 void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope);
 

@@ -9,6 +9,7 @@ add_library("eruntime" STATIC
     "estring.c"
     "eio.c"
     "effi.c"
+    "estack.c"
 )
 
 target_compile_options("eruntime"

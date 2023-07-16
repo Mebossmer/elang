@@ -12,24 +12,24 @@ static void println(eString string)
     putc('\n', stdout);
 }
 
-eResult print(eArena *arena, eScope *scope, eListNode *arguments)
+eResult print(eArena *arena, eScope *scope, eStack *arguments)
 {
-    eResult result = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
+    eValue value = E_STACK_POP(arguments, eValue);
 
-    switch(result.value.type)
+    switch(value.type)
     {
     case VT_INT:
-        printf("%d\n", result.value.integer);
+        printf("%d\n", value.integer);
 
         break;
 
     case VT_STRING:
-        println(result.value.string);
+        println(value.string);
 
         break;
 
     case VT_BOOL:
-        switch(result.value.boolean)
+        switch(value.boolean)
         {
         case true:
             printf("true\n");
@@ -46,9 +46,9 @@ eResult print(eArena *arena, eScope *scope, eListNode *arguments)
     return (eResult) {.value = {0}, .is_void = true};
 }
 
-eResult quit(eArena *arena, eScope *scope, eListNode *arguments)
+eResult quit(eArena *arena, eScope *scope, eStack *arguments)
 {
-    eResult result = e_evaluate(arena, E_LIST_AT(arguments, 0, eASTNode *), scope);
+    eValue value = E_STACK_POP(arguments, eValue);
 
-    exit(result.value.integer);
+    exit(value.integer);
 }

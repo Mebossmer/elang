@@ -6,6 +6,7 @@
 #include <einterpreter.h>
 #include <eerror.h>
 #include <eio.h>
+#include <estack.h>
 
 int main(int argc, char **argv)
 {
