@@ -39,6 +39,16 @@ eString e_string_combine(eArena *arena, eString a, eString b)
     return result;
 }
 
+eString e_string_combine_member(eArena *arena, eString a, eString b)
+{
+    eString result = e_string_alloc(arena, a.len + b.len + 1);
+    memcpy(result.ptr, a.ptr, a.len);
+    memcpy(result.ptr + a.len + 1, b.ptr, b.len);
+    result.ptr[a.len] = '.';
+
+    return result;
+}
+
 bool e_string_compare(eString a, eString b)
 {
     if(a.len != b.len)

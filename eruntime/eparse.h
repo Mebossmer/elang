@@ -14,6 +14,7 @@ typedef enum
     AST_STRING_LITERAL,
     AST_BOOL_LITERAL,
     AST_IDENTIFIER,
+    AST_MEMBER,
 
     AST_ARITHMETIC,
     AST_CONDITION,
@@ -142,7 +143,7 @@ typedef struct
 
 typedef struct
 {
-    eString identifier;
+    eASTNode *base; // identifier or member
 
     eListNode *arguments; // eASTNode *
 } eASTFunctionCall;
@@ -161,7 +162,16 @@ typedef struct
 typedef struct
 {
     eString path;
+
+    eString identifier;
 } eASTImport;
+
+typedef struct
+{
+    eString identifier;
+
+    eASTNode *base; // identifier or member
+} eASTMember;
 
 struct eastnode
 {
@@ -196,6 +206,8 @@ struct eastnode
         eASTReturn return_stmt;
 
         eASTImport import_stmt;
+
+        eASTMember member;
     };
 };
 
@@ -211,6 +223,8 @@ typedef struct
 eASTNode *e_ast_alloc(eArena *arena, eASTNode node);
 
 eParser e_parser_new(eListNode *tokens, eString src);
+
+eASTNode *e_parse_member(eArena *arena, eParser *self);
 
 eASTNode *e_parse_factor(eArena *arena, eParser *self);
 

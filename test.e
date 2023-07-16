@@ -1,7 +1,6 @@
-import "testImport.e"
+import "math.e" as math
 
-print(isOdd(3))
-print(square(8))
+print(math.isOdd(3))
+print(math.square(8))
 
-quit(0)
-print("This code is unreachable")
+print("This code is reachable")

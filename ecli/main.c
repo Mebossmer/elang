@@ -18,9 +18,16 @@ int main(int argc, char **argv)
         return 0;
     }
 
+    eString path = {.ptr = argv[1], .len = strlen(argv[1])};
+
+    eFileState file = {
+        .is_main = true,
+        .identifier = path
+    };
+
     eScope scope = e_scope_new(NULL, NULL);
 
-    e_exec_file((eString) {.ptr = argv[1], .len = strlen(argv[1])}, &scope);
+    e_exec_file(path, &scope, &file);
 
     e_scope_free(&scope);
 

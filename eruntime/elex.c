@@ -42,7 +42,8 @@ static KeywordMap keywords[] = {
     {.text = {.ptr = "void", .len = 4}, .tag = ETK_KEYWORD_TYPE_VOID},
     {.text = {.ptr = "return", .len = 6}, .tag = ETK_KEYWORD_RETURN},
     {.text = {.ptr = "import", .len = 6}, .tag = ETK_KEYWORD_IMPORT},
-    {.text = {.ptr = "extern", .len = 6}, .tag = ETK_KEYWORD_EXTERN}
+    {.text = {.ptr = "extern", .len = 6}, .tag = ETK_KEYWORD_EXTERN},
+    {.text = {.ptr = "as", .len = 2}, .tag = ETK_KEYWORD_AS}
 };
 
 static SpecialMap special[] = {
@@ -62,7 +63,8 @@ static SpecialMap special[] = {
     {.c = '{', .tag = ETK_L_CURLY_BRACE},
     {.c = '}', .tag = ETK_R_CURLY_BRACE},
     {.c = '!', .tag = ETK_EXCLAMATION},
-    {.c = ':', .tag = ETK_DOUBLE_COLON}
+    {.c = ':', .tag = ETK_DOUBLE_COLON},
+    {.c = '.', .tag = ETK_DOT}
 };
 
 static eToken lex_equals_sign(eString src, size_t start, size_t line)

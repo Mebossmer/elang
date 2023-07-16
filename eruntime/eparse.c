@@ -85,6 +85,36 @@ static void expect(eParser *self, eTokenTag tag)
     THROW_ERROR(PARSER_ERROR, "unexpected token", tk->line);
 }
 
+eASTNode *e_parse_member(eArena *arena, eParser *self)
+{
+    eToken *tk = E_LIST_AT(self->tokens, self->index, eToken *);
+
+    // Create the member expression
+    eASTNode *base = e_ast_alloc(arena, (eASTNode) {
+        .tag = AST_IDENTIFIER,
+        .identifier = e_string_slice(self->src, tk->start, tk->len)
+    });
+
+    self->index++;
+
+    while(accept(self, ETK_DOT))
+    {
+        tk = E_LIST_AT(self->tokens, self->index, eToken *);
+
+        base = e_ast_alloc(arena, (eASTNode) {
+            .tag = AST_MEMBER,
+            .member = (eASTMember) {
+                .base = base,
+                .identifier = e_string_slice(self->src, tk->start, tk->len)
+            }
+        });
+
+        self->index++;
+    }
+
+    return base;
+}
+
 eASTNode *e_parse_factor(eArena *arena, eParser *self)
 {
     eToken *tk = E_LIST_AT(self->tokens, self->index, eToken *);
@@ -109,6 +139,10 @@ eASTNode *e_parse_factor(eArena *arena, eParser *self)
     }
     else if(accept(self, ETK_IDENTIFIER))
     {
+        self->index--;
+
+        eASTNode *member = e_parse_member(arena, self);
+
         if(accept(self, ETK_L_PAREN))
         {
             eListNode *arguments = NULL;
@@ -127,7 +161,7 @@ eASTNode *e_parse_factor(eArena *arena, eParser *self)
             return e_ast_alloc(arena, (eASTNode) {
                 .tag = AST_FUNCTION_CALL,
                 .function_call = (eASTFunctionCall) {
-                    .identifier = e_string_slice(self->src, tk->start, tk->len),
+                    .base = member,
                     .arguments = arguments
                 }
             });
@@ -434,6 +468,10 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
     }
     else if(accept(self, ETK_IDENTIFIER))
     {
+        self->index--;
+
+        eASTNode *member = e_parse_member(arena, self);
+
         if(accept(self, ETK_L_PAREN))
         {
             eListNode *arguments = NULL;
@@ -452,7 +490,7 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
             return e_ast_alloc(arena, (eASTNode) {
                 .tag = AST_FUNCTION_CALL,
                 .function_call = (eASTFunctionCall) {
-                    .identifier = e_string_slice(self->src, tk->start, tk->len),
+                    .base = member,
                     .arguments = arguments
                 }
             });
@@ -599,11 +637,16 @@ eASTNode *e_parse_statement(eArena *arena, eParser *self)
         eString path = e_string_slice(self->src, path_tk->start, path_tk->len);
 
         expect(self, ETK_STRING);
+        expect(self, ETK_KEYWORD_AS);
+
+        eToken *as_tk = E_LIST_AT(self->tokens, self->index, eToken *);
+        expect(self, ETK_IDENTIFIER);
 
         return e_ast_alloc(arena, (eASTNode) {
             .tag = AST_IMPORT,
             .import_stmt = (eASTImport) {
-                .path = path
+                .path = path,
+                .identifier = e_string_slice(self->src, as_tk->start, as_tk->len)
             }
         });
     }

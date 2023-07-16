@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 
-bool e_exec_file(eString path, eScope *scope)
+bool e_exec_file(eString path, eScope *scope, eFileState *file)
 {
     eString txt = e_read_file(&scope->allocator, path);
     if(!txt.ptr)
@@ -23,7 +23,7 @@ bool e_exec_file(eString path, eScope *scope)
 
     while(expr->tag != AST_EOF)
     {
-        eResult value = e_evaluate(&scope->allocator, expr, scope);
+        eResult value = e_evaluate(&scope->allocator, expr, scope, file);
 
         expr = e_parse_statement(&scope->allocator, &parser);
     }
@@ -104,7 +104,7 @@ static bool is_greater(eValue a, eValue b)
     }
 }
 
-eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
+eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope, eFileState *file)
 {
     switch(node->tag)
     {
@@ -131,7 +131,7 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_IDENTIFIER: {
-        eValue value = e_get_value(node->identifier, scope);
+        eValue value = e_get_value(node->identifier, scope, file);
 
         return (eResult) {
             .value = value,
@@ -141,8 +141,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_ARITHMETIC: {
-        eResult lhs = e_evaluate(arena, node->arithmetic.lhs, scope);
-        eResult rhs = e_evaluate(arena, node->arithmetic.rhs, scope);
+        eResult lhs = e_evaluate(arena, node->arithmetic.lhs, scope, file);
+        eResult rhs = e_evaluate(arena, node->arithmetic.rhs, scope, file);
 
         switch(node->arithmetic.op)
         {
@@ -202,19 +202,19 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_DECLARATION: {
-        eResult result = e_evaluate(arena, node->declaration.init, scope);
+        eResult result = e_evaluate(arena, node->declaration.init, scope, file);
         if(result.is_void)
         {
             THROW_ERROR(RUNTIME_ERROR, "cannot assign void to a variable", 0l);
         }
 
-        e_declare(arena, node->declaration.identifier, result.value, node->declaration.type, node->declaration.value_type, scope);
+        e_declare(arena, node->declaration.identifier, result.value, node->declaration.type, node->declaration.value_type, scope, file);
 
         return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
 
     case AST_ASSIGNMENT: {
-        e_assign(arena, node->assignment, scope);
+        e_assign(arena, node->assignment, scope, file);
 
         return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
@@ -225,7 +225,7 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
         eListNode *current = node->function_call.arguments;
         while(current != NULL)
         {
-            eResult result = e_evaluate(arena, current->data, scope);
+            eResult result = e_evaluate(arena, current->data, scope, file);
             if(result.is_void)
             {
                 THROW_ERROR(RUNTIME_ERROR, "cannot accept void as argument", 0l);
@@ -238,21 +238,21 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
 
         return e_call(arena, (eFunctionCall) {
             .args = args,
-            .identifier = node->function_call.identifier
-        }, scope);
+            .identifier = node->function_call.base->identifier
+        }, scope, file);
     }
 
     case AST_IF_STATEMENT: {
-        eResult condition = e_evaluate(arena, node->if_statement.condition, scope);
+        eResult condition = e_evaluate(arena, node->if_statement.condition, scope, file);
 
         eResult result = {0};
         if(condition.value.boolean)
         {
-            result = e_evaluate_body(arena, node->if_statement.body, scope);
+            result = e_evaluate_body(arena, node->if_statement.body, scope, file);
         }
         else if(node->if_statement.else_body != NULL)
         {
-            result = e_evaluate_body(arena, node->if_statement.else_body, scope);
+            result = e_evaluate_body(arena, node->if_statement.else_body, scope, file);
         }
 
         // return (eResult) {.value = {0}, .is_void = true, .is_return = false};
@@ -260,13 +260,13 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_WHILE_LOOP: {
-        eResult condition = e_evaluate(arena, node->while_loop.condition, scope);
+        eResult condition = e_evaluate(arena, node->while_loop.condition, scope, file);
 
         while(condition.value.boolean)
         {
-            e_evaluate_body(arena, node->while_loop.body, scope);
+            e_evaluate_body(arena, node->while_loop.body, scope, file);
 
-            condition = e_evaluate(arena, node->while_loop.condition, scope);
+            condition = e_evaluate(arena, node->while_loop.condition, scope, file);
         }
 
         return (eResult) {.value = {0}, .is_void = true, .is_return = false};
@@ -284,8 +284,8 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_CONDITION: {
-        eResult lhs = e_evaluate(arena, node->condition.lhs, scope);
-        eResult rhs = e_evaluate(arena, node->condition.rhs, scope);
+        eResult lhs = e_evaluate(arena, node->condition.lhs, scope, file);
+        eResult rhs = e_evaluate(arena, node->condition.rhs, scope, file);
 
         switch(node->condition.op)
         {
@@ -345,7 +345,7 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_FUNCTION_DECL:
-        e_declare_function(arena, node->function_decl, scope);
+        e_declare_function(arena, node->function_decl, scope, file);
 
         return (eResult) {.value = {0}, .is_void = true, .is_return = false};
 
@@ -355,7 +355,7 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
             THROW_ERROR(RUNTIME_ERROR, "cannot return ouside of function", 0l);
         }
 
-        eResult return_value = e_evaluate(arena, node->return_stmt.arg, scope);
+        eResult return_value = e_evaluate(arena, node->return_stmt.arg, scope, file);
         if(return_value.value.type != scope->function->return_type || scope->function->return_type == VT_VOID)
         {
             THROW_ERROR(RUNTIME_ERROR, "invalid return value", 0l);
@@ -370,7 +370,14 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 
     case AST_IMPORT: {
-        e_exec_file(e_string_slice(node->import_stmt.path, 1, node->import_stmt.path.len - 2), scope);
+        eString path = e_string_slice(node->import_stmt.path, 1, node->import_stmt.path.len - 2);
+
+        eFileState imported = {
+            .identifier = path,
+            .is_main = false
+        };
+
+        e_exec_file(path, scope, file);
 
         return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
@@ -381,12 +388,12 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope)
     }
 }
 
-eResult e_evaluate_body(eArena *arena, eListNode *body, eScope *scope)
+eResult e_evaluate_body(eArena *arena, eListNode *body, eScope *scope, eFileState *file)
 {
     eListNode *current = body;
     while(current != NULL)
     {
-        eResult result = e_evaluate(arena, (eASTNode *) current->data, scope);
+        eResult result = e_evaluate(arena, (eASTNode *) current->data, scope, file);
         if(result.is_return)
         {
             return result;
@@ -421,7 +428,7 @@ static eASTFunctionDecl *get_function(eString identifier, eScope *scope)
     return NULL;
 }
 
-eResult e_call(eArena *arena, eFunctionCall call, eScope *scope)
+eResult e_call(eArena *arena, eFunctionCall call, eScope *scope, eFileState *file)
 {
     eASTFunctionDecl *function = get_function(call.identifier, scope);
     if(function != NULL)
@@ -439,7 +446,7 @@ eResult e_call(eArena *arena, eFunctionCall call, eScope *scope)
             eASTFunctionParam *param = (eASTFunctionParam *) current_param->data;
             eValue value = E_STACK_POP(&call.args, eValue);
 
-            e_declare(&fn_scope.allocator, param->identifier, value, AT_VAR, param->value_type, &fn_scope);
+            e_declare(&fn_scope.allocator, param->identifier, value, AT_VAR, param->value_type, &fn_scope, file);
 
             current_param = current_param->next;
         }
@@ -450,7 +457,7 @@ eResult e_call(eArena *arena, eFunctionCall call, eScope *scope)
         {
             eASTNode *node = (eASTNode *) current->data;
 
-            eResult result = e_evaluate(arena, node, &fn_scope);
+            eResult result = e_evaluate(arena, node, &fn_scope, file);
             if(result.is_return)
             {
                 // Return from function
@@ -476,7 +483,7 @@ eResult e_call(eArena *arena, eFunctionCall call, eScope *scope)
     return e_ffi_call(call.identifier, (eString) {.ptr = "./build/elibrary/libelibrary.so", .len = 31}, arena, scope, &call.args);
 }
 
-void e_declare(eArena *arena, eString identifier, eValue value, eAssignmentType type, eValueType decl_type, eScope *scope)
+void e_declare(eArena *arena, eString identifier, eValue value, eAssignmentType type, eValueType decl_type, eScope *scope, eFileState *file)
 {
     // Search for variables with the same name
     eScope *current_scope = scope;
@@ -512,7 +519,7 @@ void e_declare(eArena *arena, eString identifier, eValue value, eAssignmentType 
     }, sizeof(eVariable));
 }
 
-void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope)
+void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope, eFileState *file)
 {
     // Search for function with the same name
     eScope *current_scope = scope;
@@ -538,7 +545,7 @@ void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *sco
     e_list_push(arena, &scope->functions, &declaration, sizeof(eASTFunctionDecl));
 }
 
-void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
+void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope, eFileState *file)
 {
     // Search for the corresponding variable
     eScope *current_scope = scope;
@@ -555,7 +562,7 @@ void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
                     THROW_ERROR(RUNTIME_ERROR, "cannot reassign a constant", 0l);
                 }
 
-                eResult result = e_evaluate(arena, assignment.init, scope);
+                eResult result = e_evaluate(arena, assignment.init, scope, file);
 
                 if(result.value.type != var->value_type)
                 {
@@ -577,7 +584,7 @@ void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope)
     THROW_ERROR(RUNTIME_ERROR, "unknown identifier", 0l);
 }
 
-eValue e_get_value(eString identifier, eScope *scope)
+eValue e_get_value(eString identifier, eScope *scope, eFileState *file)
 {
     eScope *current_scope = scope;
     while(current_scope != NULL)

@@ -45,6 +45,13 @@ typedef struct
     eStack args; // eValue
 } eFunctionCall;
 
+typedef struct
+{
+    eString identifier;
+
+    bool is_main;
+} eFileState;
+
 struct escope
 {
     eScope *parent;
@@ -61,22 +68,22 @@ struct escope
 /**
  * Returns true on success and false if the file couldn't be read
 */
-bool e_exec_file(eString path, eScope *scope);
+bool e_exec_file(eString path, eScope *scope, eFileState *file);
 
 eScope e_scope_new(/* Nullable */ eScope *parent, /* Nullable */ eASTFunctionDecl *function);
 
 void e_scope_free(eScope *scope);
 
-eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope);
+eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope, eFileState *file);
 
-eResult e_evaluate_body(eArena *arena, eListNode *body, eScope *scope);
+eResult e_evaluate_body(eArena *arena, eListNode *body, eScope *scope, eFileState *file);
 
-eResult e_call(eArena *arena, eFunctionCall call, eScope *scope);
+eResult e_call(eArena *arena, eFunctionCall call, eScope *scope, eFileState *file);
 
-void e_declare(eArena *arena, eString identifier, eValue value, eAssignmentType type, eValueType decl_type, eScope *scope);
+void e_declare(eArena *arena, eString identifier, eValue value, eAssignmentType type, eValueType decl_type, eScope *scope, eFileState *file);
 
-void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope);
+void e_declare_function(eArena *arena, eASTFunctionDecl declaration, eScope *scope, eFileState *file);
 
-void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope);
+void e_assign(eArena *arena, eASTAssignment assignment, eScope *scope, eFileState *file);
 
-eValue e_get_value(eString identifier, eScope *scope);
+eValue e_get_value(eString identifier, eScope *scope, eFileState *file);
