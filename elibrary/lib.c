@@ -1,6 +1,7 @@
-#include "io.h"
+#include <einterpreter.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <effi.h>
 
 static void println(eString string)
 {
@@ -12,7 +13,7 @@ static void println(eString string)
     putc('\n', stdout);
 }
 
-eResult print(eArena *arena, eScope *scope, eStack *arguments)
+static eResult io_print(eArena *arena, eScope *scope, eStack *arguments)
 {
     eValue value = E_STACK_POP(arguments, eValue);
 
@@ -46,9 +47,30 @@ eResult print(eArena *arena, eScope *scope, eStack *arguments)
     return (eResult) {.value = {0}, .is_void = true};
 }
 
-eResult quit(eArena *arena, eScope *scope, eStack *arguments)
+static eResult io_exit(eArena *arena, eScope *scope, eStack *arguments)
 {
     eValue value = E_STACK_POP(arguments, eValue);
 
     exit(value.integer);
+}
+
+static eFunctionDef function_table[] =
+{
+    {
+        .name = (eString) {.ptr = "print", .len = 5},
+        .ptr = io_print,
+        .num_args = 1
+    },
+    {
+        .name = (eString) {.ptr = "exit", .len = 4},
+        .ptr = io_exit,
+        .num_args = 1
+    }
+};
+
+eFunctionDef *e_mod_init(size_t *num_functions)
+{
+    *num_functions = sizeof(function_table) / sizeof(function_table[0]);
+
+    return function_table;
 }

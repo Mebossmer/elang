@@ -438,7 +438,7 @@ eResult e_call(eArena *arena, eFunctionCall call, eScope *scope, eFileState *fil
     {
         if(e_stack_len(&call.args) != e_list_len(function->params))
         {
-            THROW_ERROR(RUNTIME_ERROR, "wrong amount of args provided", 0l);
+            THROW_ERROR(RUNTIME_ERROR, "wrong amount of arguments provided", 0l);
         }
 
         // Declare all arguments as variables

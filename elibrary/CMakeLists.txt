@@ -1,7 +1,7 @@
 project("elibrary" C)
 
 add_library("elibrary" SHARED
-    "io.c"
+    "lib.c"
 )
 
 target_link_libraries("elibrary" "eruntime")

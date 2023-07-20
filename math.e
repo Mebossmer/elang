@@ -1,4 +1,4 @@
-fun extern square(a: int): int
+fun square(a: int): int
 {
     return a * a
 }
