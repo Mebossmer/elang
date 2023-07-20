@@ -49,6 +49,45 @@ eString e_string_combine_member(eArena *arena, eString a, eString b)
     return result;
 }
 
+eString e_string_slice_file_name(eString str)
+{
+    for(size_t i = 0; i < str.len; i++)
+    {
+        size_t j = str.len - i;
+
+        if(str.ptr[j] == '/')
+        {
+            return (eString) {
+                .ptr = str.ptr + str.len - j,
+                .len = j
+            };
+        }
+    }
+
+    return str;
+}
+
+eString e_string_slice_file_path(eString str)
+{
+    for(size_t i = 0; i < str.len; i++)
+    {
+        size_t j = str.len - i;
+
+        if(str.ptr[j] == '/')
+        {
+            return (eString) {
+                .ptr = str.ptr,
+                .len = j + 1
+            };
+        }
+    }
+
+    return (eString) {
+        .ptr = str.ptr,
+        .len = 0
+    };
+}
+
 bool e_string_compare(eString a, eString b)
 {
     if(a.len != b.len)

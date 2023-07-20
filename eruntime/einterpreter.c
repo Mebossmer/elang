@@ -373,11 +373,14 @@ eResult e_evaluate(eArena *arena, eASTNode *node, eScope *scope, eFileState *fil
         eString path = e_string_slice(node->import_stmt.path, 1, node->import_stmt.path.len - 2);
 
         eFileState imported = {
-            .identifier = path,
+            .path = path,
             .is_main = false
         };
 
-        e_exec_file(path, scope, file);
+        eString current_path = e_string_slice_file_path(file->path);
+        eString exec_path = e_string_combine(arena, current_path, path);
+
+        e_exec_file(exec_path, scope, file);
 
         return (eResult) {.value = {0}, .is_void = true, .is_return = false};
     }
@@ -480,7 +483,14 @@ eResult e_call(eArena *arena, eFunctionCall call, eScope *scope, eFileState *fil
     }
 
     // TODO: this is temporary
-    return e_ffi_call(call.identifier, (eString) {.ptr = "./build/elibrary/libelibrary.so", .len = 31}, arena, scope, &call.args);
+    char *user = getenv("HOME");
+    eString userpath = {
+        .ptr = user,
+        .len = strlen(user)
+    };
+    eString libpath = e_string_combine(arena, userpath, (eString) {.ptr = "/.e/libelibrary.so", .len = 18});
+
+    return e_ffi_call(call.identifier, libpath, arena, scope, &call.args);
 }
 
 void e_declare(eArena *arena, eString identifier, eValue value, eAssignmentType type, eValueType decl_type, eScope *scope, eFileState *file)

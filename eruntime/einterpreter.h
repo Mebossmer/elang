@@ -47,7 +47,7 @@ typedef struct
 
 typedef struct
 {
-    eString identifier;
+    eString path;
 
     bool is_main;
 } eFileState;

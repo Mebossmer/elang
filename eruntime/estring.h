@@ -21,6 +21,16 @@ eString e_string_combine(eArena *arena, eString a, eString b);
 
 eString e_string_combine_member(eArena *arena, eString a, eString b);
 
+/**
+ * Gets the filename a path string points to
+*/
+eString e_string_slice_file_name(eString str);
+
+/**
+ * Gets the path without the filename the path string points to
+*/
+eString e_string_slice_file_path(eString str);
+
 bool e_string_compare(eString a, eString b);
 
 void e_string_print(eString msg);

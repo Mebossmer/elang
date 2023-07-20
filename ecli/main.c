@@ -20,12 +20,12 @@ int main(int argc, char **argv)
 
     eString path = {.ptr = argv[1], .len = strlen(argv[1])};
 
+    eScope scope = e_scope_new(NULL, NULL);
+
     eFileState file = {
         .is_main = true,
-        .identifier = path
+        .path = path
     };
-
-    eScope scope = e_scope_new(NULL, NULL);
 
     e_exec_file(path, &scope, &file);
 
